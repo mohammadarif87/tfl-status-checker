@@ -2,7 +2,7 @@ name: Check Elizabeth Line Status
 
 on:
   schedule:
-    - cron: "30 16 * * *" # Runs at 16:30 PM UTC daily
+    - cron: "30 16 * * 1,2,3,4,5" # Runs at 16:30 PM UTC daily
 
 jobs:
   check-status:
