@@ -5,19 +5,34 @@ require("dotenv").config();
 const TFL_URL = "https://tfl.gov.uk/tube-dlr-overground/status";
 
 async function checkStatus() {
-  const browser = await puppeteer.launch({ headless: "new" });
+  const browser = await puppeteer.launch({
+    headless: "new",
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
+
   const page = await browser.newPage();
   await page.goto(TFL_URL, { waitUntil: "networkidle2" });
 
-  const status = await page.evaluate(() => {
-    const elizabethLine = Array.from(document.querySelectorAll(".service"));
-    for (let service of elizabethLine) {
-      if (service.innerText.includes("Elizabeth line")) {
-        return service.innerText.replace("Elizabeth line", "").trim();
-      }
+  // Accept Cookies if present
+  const cookieBanner = await page.$("#cb-cookiebanner");
+  if (cookieBanner) {
+    const acceptButton = await page.$("#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll");
+    if (acceptButton) {
+      await acceptButton.click();
+      console.log("Cookie Policy Accepted");
     }
-    return "Unknown";
+  }
+
+  // Try new selector
+  await page.waitForSelector('#line-elizabeth-heading');
+  
+  // Extract Piccadilly Line status
+  const status = await page.evaluate(() => {
+    const elizabethLine = document.querySelector('#line-elizabeth-heading > span.disruption-summary');
+    return elizabethLine ? elizabethLine.innerText.trim() : "Unknown";
   });
+
+  console.log(`Extracted status: ${status}`);
 
   await browser.close();
 
