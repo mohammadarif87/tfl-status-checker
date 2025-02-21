@@ -41,6 +41,7 @@ async function checkStatus() {
     await sendAlert(status);
   } else {
     console.log("Elizabeth Line is running fine.");
+    await sendAlert(status); //debug
   }
 }
 
