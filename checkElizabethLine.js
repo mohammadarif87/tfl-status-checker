@@ -24,11 +24,11 @@ async function checkStatus() {
   }
 
   // Try new selector
-  await page.waitForSelector('#line-elizabeth-heading');
+  await page.waitForSelector('#rainbow-list-tube-dlr-overground-elizabeth-line-tram > ul > li.rainbow-list-item.elizabeth');
   
   // Extract Piccadilly Line status
   const status = await page.evaluate(() => {
-    const elizabethLine = document.querySelector('#line-elizabeth-heading > span.disruption-summary');
+    const elizabethLine = document.querySelector('#rainbow-list-tube-dlr-overground-elizabeth-line-tram > ul > li.rainbow-list-item.elizabeth > div > span.disruption-summary');
     return elizabethLine ? elizabethLine.innerText.trim() : "Unknown";
   });
 
@@ -36,7 +36,7 @@ async function checkStatus() {
 
   await browser.close();
 
-  if (status !== "Good Service") {
+  if (status !== "Good service") {
     console.log(`Alert! Elizabeth Line status: ${status}`);
     await sendAlert(status);
   } else {
