@@ -34,6 +34,17 @@ async function checkStatus() {
 
   console.log(`Extracted status: ${status}`);
 
+  // Screenshot selector
+const STATUS_SELECTOR = "#rainbow-list-tube-dlr-overground-elizabeth-line-tram";
+
+// Take a screenshot of the status section
+await page.waitForSelector(STATUS_SELECTOR, { timeout: 5000 });
+await page.screenshot({ path: "status.png", clip: await page.$eval(STATUS_SELECTOR, el => {
+  const { x, y, width, height } = el.getBoundingClientRect();
+  return { x, y, width, height };
+}) });
+
+
   await browser.close();
 
   if (status !== "Good service") {
@@ -46,13 +57,40 @@ async function checkStatus() {
 }
 
 async function sendAlert(status) {
-  if (process.env.SLACK_WEBHOOK_URL) {
-    await axios.post(process.env.SLACK_WEBHOOK_URL, {
+  const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
+  const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN; // Needed for file uploads
+  const SLACK_CHANNEL = process.env.SLACK_CHANNEL || "#general";
+
+  const { WebClient } = require("@slack/web-api");
+  const fs = require("fs");
+
+  if (!SLACK_BOT_TOKEN) {
+    console.log("No Slack bot token configured.");
+    return;
+  }
+
+  const slackClient = new WebClient(SLACK_BOT_TOKEN);
+
+  try {
+    // Send status text
+    await slackClient.chat.postMessage({
+      channel: SLACK_CHANNEL,
       text: `Elizabeth Line alert! Current status: ${status}`,
     });
-  } else {
-    console.log("No Slack webhook configured.");
+
+    // Upload Screenshot
+    const result = await slackClient.files.upload({
+      channels: SLACK_CHANNEL,
+      file: fs.createReadStream("status.png"),
+      filename: "status.png",
+      title: "TfL Status Report",
+    });
+
+    console.log("Screenshot sent to Slack:", result.ok);
+  } catch (error) {
+    console.error("Failed to send alert:", error);
   }
 }
+
 
 checkStatus();
