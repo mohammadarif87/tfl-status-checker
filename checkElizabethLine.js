@@ -83,6 +83,8 @@ async function sendAlert(status) {
       return;
     }
     
+    const SLACK_CHANNEL = "tfl-status-bot"; // Try using the channel name directly
+
     // Upload Screenshot
     const result = await slackClient.files.uploadV2({
       channel: SLACK_CHANNEL,
