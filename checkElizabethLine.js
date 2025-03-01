@@ -57,7 +57,6 @@ await page.screenshot({ path: "status.png", clip: await page.$eval(STATUS_SELECT
 }
 
 async function sendAlert(status) {
-  const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
   const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN; // Needed for file uploads
   const SLACK_CHANNEL = process.env.SLACK_CHANNEL || "#general";
 
@@ -79,12 +78,13 @@ async function sendAlert(status) {
     });
 
     // Upload Screenshot
-    const result = await slackClient.files.upload({
-      channels: SLACK_CHANNEL,
-      file: fs.createReadStream("status.png"),
-      filename: "status.png",
-      title: "TfL Status Report",
+    const result = await slackClient.files.uploadV2({
+      channel_id: process.env.SLACK_CHANNEL,
+      file: fs.createReadStream("tfl_status.png"),
+      title: "TfL Status Update",
+      initial_comment: `Elizabeth Line alert! Current status: ${status}`,
     });
+    
 
     console.log("Screenshot sent to Slack:", result.ok);
   } catch (error) {
