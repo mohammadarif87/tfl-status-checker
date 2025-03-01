@@ -39,7 +39,7 @@ const STATUS_SELECTOR = "#rainbow-list-tube-dlr-overground-elizabeth-line-tram";
 
 // Take a screenshot of the status section
 await page.waitForSelector(STATUS_SELECTOR, { timeout: 5000 });
-await page.screenshot({ path: "status.png", clip: await page.$eval(STATUS_SELECTOR, el => {
+await page.screenshot({ path: "tfl_status.png", clip: await page.$eval(STATUS_SELECTOR, el => {
   const { x, y, width, height } = el.getBoundingClientRect();
   return { x, y, width, height };
 }) });
@@ -77,9 +77,15 @@ async function sendAlert(status) {
       text: `Elizabeth Line alert! Current status: ${status}`,
     });
 
+    // Check file exists
+    if (!fs.existsSync("tfl_status.png")) {
+      console.error("Screenshot file not found!");
+      return;
+    }
+    
     // Upload Screenshot
     const result = await slackClient.files.uploadV2({
-      channel_id: process.env.SLACK_CHANNEL,
+      channel_id: SLACK_CHANNEL,
       file: fs.createReadStream("tfl_status.png"),
       title: "TfL Status Update",
       initial_comment: `Elizabeth Line alert! Current status: ${status}`,
