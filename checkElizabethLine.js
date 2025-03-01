@@ -85,7 +85,7 @@ async function sendAlert(status) {
     
     // Upload Screenshot
     const result = await slackClient.files.uploadV2({
-      channel_id: SLACK_CHANNEL,
+      channel: SLACK_CHANNEL,
       file: fs.createReadStream("tfl_status.png"),
       filename: "tfl_status.png",
       title: "TfL Status Update",
