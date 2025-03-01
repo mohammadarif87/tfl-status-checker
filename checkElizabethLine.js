@@ -90,7 +90,8 @@ async function sendAlert(status) {
       title: "TfL Status Update",
       initial_comment: `Elizabeth Line alert! Current status: ${status}`,
     });
-    
+
+    console.log(`Sending to Slack channel: ${SLACK_CHANNEL}`);
 
     console.log("Screenshot sent to Slack:", result.ok);
   } catch (error) {
