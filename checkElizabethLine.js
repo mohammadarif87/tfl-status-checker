@@ -87,6 +87,7 @@ async function sendAlert(status) {
     const result = await slackClient.files.uploadV2({
       channel_id: SLACK_CHANNEL,
       file: fs.createReadStream("tfl_status.png"),
+      filename: "tfl_status.png",
       title: "TfL Status Update",
       initial_comment: `Elizabeth Line alert! Current status: ${status}`,
     });
