@@ -82,19 +82,17 @@ async function sendAlert(status) {
       console.error("Screenshot file not found!");
       return;
     }
-    
-    const SLACK_CHANNEL = "tfl-status-bot"; // Try using the channel name directly
+
+    console.log(`Sending to Slack channel: ${SLACK_CHANNEL}`);
 
     // Upload Screenshot
     const result = await slackClient.files.uploadV2({
-      channel: SLACK_CHANNEL,
+      channel_id: SLACK_CHANNEL,
       file: fs.createReadStream("tfl_status.png"),
       filename: "tfl_status.png",
       title: "TfL Status Update",
       initial_comment: `Elizabeth Line alert! Current status: ${status}`,
     });
-
-    console.log(`Sending to Slack channel: ${SLACK_CHANNEL}`);
 
     console.log("Screenshot sent to Slack:", result.ok);
   } catch (error) {
