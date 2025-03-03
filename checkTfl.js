@@ -26,20 +26,22 @@ async function checkStatus() {
   // Wait for the status list
   await page.waitForSelector("#rainbow-list-tube-dlr-overground-elizabeth-line-tram");
 
-  // Extract statuses
+  // Extract disrupted lines with valid bounding boxes
   const disruptedLines = await page.evaluate(() => {
-    const lines = [];
-    document.querySelectorAll(".rainbow-list-item").forEach((item) => {
-      const lineName = item.querySelector(".service-name")?.innerText.trim();
-      const status = item.querySelector(".disruption-summary")?.innerText.trim();
-      if (lineName && status && status !== "Good service") {
-        lines.push({ lineName, status, element: item });
-      }
-    });
-    return lines;
+    return Array.from(document.querySelectorAll(".rainbow-list-item"))
+      .map((item) => {
+        const lineName = item.querySelector(".service-name")?.innerText.trim();
+        const status = item.querySelector(".disruption-summary")?.innerText.trim();
+        const rect = item.getBoundingClientRect();
+        if (lineName && status && status !== "Good service" && rect.width > 0 && rect.height > 0) {
+          return { lineName, status, boundingBox: rect };
+        }
+        return null;
+      })
+      .filter(Boolean);
   });
 
-  // If all lines are "Good service", just send text and exit
+  // If all lines are "Good service", send a message and exit
   if (disruptedLines.length === 0) {
     console.log("All lines are running fine.");
     await sendAlert("All lines are running fine.");
@@ -49,27 +51,29 @@ async function checkStatus() {
 
   console.log("Disrupted lines:", disruptedLines);
 
-  // Capture only the affected lines in a screenshot
-  const clip = await page.evaluate((lines) => {
-    const rects = lines.map((line) => {
-      const { x, y, width, height } = line.element.getBoundingClientRect();
-      return { x, y, width, height };
-    });
+  // Ensure valid screenshot dimensions
+  if (disruptedLines.length > 0 && disruptedLines.some(line => line.boundingBox.width > 0 && line.boundingBox.height > 0)) {
+    const clip = disruptedLines.reduce(
+      (acc, line) => {
+        acc.x = Math.min(acc.x, line.boundingBox.x);
+        acc.y = Math.min(acc.y, line.boundingBox.y);
+        acc.width = Math.max(acc.width, line.boundingBox.x + line.boundingBox.width - acc.x);
+        acc.height = Math.max(acc.height, line.boundingBox.y + line.boundingBox.height - acc.y);
+        return acc;
+      },
+      { x: Infinity, y: Infinity, width: 0, height: 0 }
+    );
 
-    // Get the bounding box that contains all affected lines
-    const x = Math.min(...rects.map((r) => r.x));
-    const y = Math.min(...rects.map((r) => r.y));
-    const width = Math.max(...rects.map((r) => r.x + r.width)) - x;
-    const height = Math.max(...rects.map((r) => r.y + r.height)) - y;
-
-    return { x, y, width, height };
-  }, disruptedLines);
-
-  await page.screenshot({ path: "disruptions.png", clip });
+    if (clip.width > 0 && clip.height > 0) {
+      await page.screenshot({ path: "disruptions.png", clip });
+    } else {
+      console.log("Invalid screenshot dimensions, skipping screenshot.");
+    }
+  } else {
+    console.log("No valid disruptions found for screenshot.");
+  }
 
   await browser.close();
-
-  // Send the alert with the screenshot
   await sendAlertWithScreenshot(disruptedLines);
 }
 
@@ -92,21 +96,20 @@ async function sendAlertWithScreenshot(disruptedLines) {
     .join("\n");
 
   try {
-    // Send status text
     await slackClient.chat.postMessage({
       channel: SLACK_CHANNEL,
       text: `TfL Status Alert:\n${messageText}`,
     });
 
-    // Upload Screenshot
-    const result = await slackClient.files.uploadV2({
-      channel_id: SLACK_CHANNEL,
-      file: fs.createReadStream("disruptions.png"),
-      title: "TfL Status Update",
-      initial_comment: `📸 Affected lines captured in screenshot.`,
-    });
-
-    console.log("Screenshot sent to Slack:", result.ok);
+    if (fs.existsSync("disruptions.png")) {
+      const result = await slackClient.files.uploadV2({
+        channel_id: SLACK_CHANNEL,
+        file: fs.createReadStream("disruptions.png"),
+        title: "TfL Status Update",
+        initial_comment: `📸 Affected lines captured in screenshot.`,
+      });
+      console.log("Screenshot sent to Slack:", result.ok);
+    }
   } catch (error) {
     console.error("Failed to send alert:", error);
   }
