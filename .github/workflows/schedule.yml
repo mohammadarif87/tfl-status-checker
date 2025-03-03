@@ -1,4 +1,4 @@
-name: Check Elizabeth Line Status
+name: Check TFL Line Status
 
 on:
   workflow_dispatch:
