@@ -22,7 +22,7 @@ jobs:
         run: npm install
 
       - name: Run script
-        run: node checkElizabethLine.js
+        run: node checkTfl.js
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
