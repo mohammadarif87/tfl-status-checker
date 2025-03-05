@@ -39,7 +39,7 @@ async function checkStatus() {
 
   // Filter affected lines (excluding Good Service & Information)
   const affectedLines = disruptedLines.filter(line => 
-    !["Good service", "Information"].includes(line.status)
+    !["Good service", "Information", "Closure"].includes(line.status)
   );
 
   if (affectedLines.length === 0) {
@@ -113,7 +113,9 @@ async function sendAlertWithScreenshot(affectedLines, screenshotPath) {
       file: fs.createReadStream(screenshotPath),
       title: "TfL Disruptions",
       initial_comment: `📸 Affected lines captured in screenshot.`,
+      filetype: "png" // Ensure Slack treats it as an image
     });
+    
 
     console.log("Screenshot sent to Slack:", result.ok);
   } catch (error) {
