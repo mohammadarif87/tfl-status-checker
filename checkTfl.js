@@ -39,7 +39,7 @@ async function checkStatus() {
 
   // Filter affected lines (excluding Good Service & Information)
   const affectedLines = disruptedLines.filter(line => 
-    !["Good Service", "Information"].includes(line.status)
+    !["Good service", "Information"].includes(line.status)
   );
 
   if (affectedLines.length === 0) {
@@ -97,7 +97,7 @@ async function sendAlertWithScreenshot(affectedLines, screenshotPath) {
   const slackClient = new WebClient(SLACK_BOT_TOKEN);
 
   const message = affectedLines
-    .map(line => `:siren: *${line.lineName}*: ${line.status}`)
+    .map(line => `🚨 *${line.lineName}*: ${line.status}`)
     .join("\n");
 
   try {
