@@ -26,20 +26,31 @@ async function checkStatus() {
   // Wait for the status list
   await page.waitForSelector("#rainbow-list-tube-dlr-overground-elizabeth-line-tram");
 
-  // Extract disrupted lines without bounding boxes
+  // Extract disrupted lines
   const disruptedLines = await page.evaluate(() => {
     return Array.from(document.querySelectorAll(".rainbow-list-item"))
       .map((item) => {
         const lineName = item.querySelector(".service-name")?.innerText.trim();
         const status = item.querySelector(".disruption-summary")?.innerText.trim();
-        return lineName && status && status !== "Good service" ? { lineName, status } : null;
+        return lineName && status ? { lineName, status } : null;
       })
       .filter(Boolean);
   });
 
+  // Filter affected lines (excluding Good Service & Information)
+  const affectedLines = disruptedLines.filter(line => 
+    !["Good Service", "Information"].includes(line.status)
+  );
+
+  if (affectedLines.length === 0) {
+    console.log("No major disruptions.");
+    await browser.close();
+    return;
+  }
+
   // Fetch bounding boxes separately using Puppeteer API
   const boundingBoxes = [];
-  for (const line of disruptedLines) {
+  for (const line of affectedLines) {
     const element = await page.evaluateHandle((lineName) => {
       return Array.from(document.querySelectorAll('.rainbow-list-item'))
         .find(el => el.innerText.includes(lineName));
@@ -48,13 +59,6 @@ async function checkStatus() {
       const box = await element.boundingBox();
       if (box) boundingBoxes.push(box);
     }
-  }
-
-  // If no valid bounding boxes are found, log and return
-  if (boundingBoxes.length === 0) {
-    console.log("No valid disruptions found for screenshot.");
-    await browser.close();
-    return;
   }
 
   // Calculate the clip area based on bounding boxes
@@ -69,15 +73,16 @@ async function checkStatus() {
   );
 
   // Take a screenshot only of the affected area
-  await page.screenshot({ path: "disruptions.png", clip });
+  const screenshotPath = "tfl_disruptions.png";
+  await page.screenshot({ path: screenshotPath, type: "png", clip });
 
   await browser.close();
 
   // Send the alert with the screenshot
-  await sendAlertWithScreenshot(disruptedLines);
+  await sendAlertWithScreenshot(affectedLines, screenshotPath);
 }
 
-async function sendAlertWithScreenshot(disruptedLines) {
+async function sendAlertWithScreenshot(affectedLines, screenshotPath) {
   const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
   const SLACK_CHANNEL = process.env.SLACK_CHANNEL;
 
@@ -91,52 +96,28 @@ async function sendAlertWithScreenshot(disruptedLines) {
 
   const slackClient = new WebClient(SLACK_BOT_TOKEN);
 
-  const messageText = disruptedLines
-    .map((line) => `🚨 ${line.lineName}: ${line.status}`)
+  const message = affectedLines
+    .map(line => `:siren: *${line.lineName}*: ${line.status}`)
     .join("\n");
 
   try {
     // Send status text
     await slackClient.chat.postMessage({
       channel: SLACK_CHANNEL,
-      text: `TfL Status Alert:\n${messageText}`,
+      text: `*TfL Status Alert:*\n${message}`,
     });
 
     // Upload Screenshot
     const result = await slackClient.files.uploadV2({
       channel_id: SLACK_CHANNEL,
-      file: fs.createReadStream("disruptions.png"),
-      title: "TfL Status Update",
+      file: fs.createReadStream(screenshotPath),
+      title: "TfL Disruptions",
       initial_comment: `📸 Affected lines captured in screenshot.`,
     });
 
     console.log("Screenshot sent to Slack:", result.ok);
   } catch (error) {
     console.error("Failed to send alert:", error);
-  }
-}
-
-async function sendAlert(message) {
-  const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
-  const SLACK_CHANNEL = process.env.SLACK_CHANNEL;
-
-  const { WebClient } = require("@slack/web-api");
-
-  if (!SLACK_BOT_TOKEN) {
-    console.log("No Slack bot token configured.");
-    return;
-  }
-
-  const slackClient = new WebClient(SLACK_BOT_TOKEN);
-
-  try {
-    await slackClient.chat.postMessage({
-      channel: SLACK_CHANNEL,
-      text: message,
-    });
-    console.log("Message sent to Slack.");
-  } catch (error) {
-    console.error("Failed to send message:", error);
   }
 }
 
