@@ -61,14 +61,18 @@ async function checkStatus() {
       const expandButton = await lineElementHandle.$("button");
       if (expandButton) {
         await expandButton.click();
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(1000); // Wait for the details to load
 
-        // Extract additional details
-        const details = await page.evaluate(el => {
-          const detailsElement = el.querySelector(".disruption-details");
-          return detailsElement ? detailsElement.innerText.trim() : "No additional details.";
-        }, lineElementHandle);
-        line.details = details;  // ✅ Fix: Assign the extracted details properly
+        // Extract additional details **properly**
+        line.details = await page.evaluate((lineName) => {
+          const matchingItem = Array.from(document.querySelectorAll('.rainbow-list-item'))
+            .find(el => el.innerText.includes(lineName));
+          if (matchingItem) {
+            const detailsElement = matchingItem.querySelector(".disruption-details");
+            return detailsElement ? detailsElement.innerText.trim() : "No additional details.";
+          }
+          return "No additional details.";
+        }, line.lineName);
       }
 
       // Capture bounding box
