@@ -51,8 +51,9 @@ async function checkStatus() {
   // Extract disruption details by clicking each line's expand button
   for (const line of affectedLines) {
     const lineElementHandle = await page.evaluateHandle((lineName) => {
-      return Array.from(document.querySelectorAll('.rainbow-list-item'))
-        .find(el => el.innerText.includes(lineName));
+      return Array.from(document.querySelectorAll('.rainbow-list-item')).find(el => 
+        el.innerText.includes(lineName)
+      );
     }, line.lineName);
 
     if (lineElementHandle) {
@@ -60,11 +61,18 @@ async function checkStatus() {
       if (expandButton) {
         await expandButton.click();
         await page.waitForTimeout(1500); // Wait for details to load
-
-        // Extract disruption details from the current element handle
+        
+        // Extract additional details from within the expanded content
         const details = await lineElementHandle.evaluate(el => {
-          const detailsElement = el.querySelector(".disruption-details");
-          return detailsElement ? detailsElement.innerText.trim() : "No additional details.";
+          const contentElement = el.querySelector(".rainbow-list-content");
+          if (!contentElement) return "No additional details.";
+          // Get all sections within the content area
+          const sections = Array.from(contentElement.querySelectorAll(".section"));
+          // Pick the section that does not include the 'Replan your journey' button text
+          const disruptionSection = sections.find(section => 
+            !section.innerText.includes("Replan your journey")
+          );
+          return disruptionSection ? disruptionSection.innerText.trim() : "No additional details.";
         });
         line.details = details;
       } else {
