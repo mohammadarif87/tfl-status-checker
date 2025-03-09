@@ -63,13 +63,10 @@ async function checkStatus() {
         await page.waitForTimeout(1000);
         
         // Extract disruption details after expanding
-        const details = await page.evaluate((lineName) => {
-          const lineElement = Array.from(document.querySelectorAll(".rainbow-list-item"))
-            .find(el => el.innerText.includes(lineName));
-          if (!lineElement) return "No additional details.";
-          const detailsElement = lineElement.querySelector(".disruption-details");
+        const details = await lineElementHandle.evaluate(el => {
+          const detailsElement = el.querySelector(".disruption-details");
           return detailsElement ? detailsElement.innerText.trim() : "No additional details.";
-        }, line.lineName);
+        });
     
         line.details = details;
       }
