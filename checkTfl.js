@@ -37,7 +37,7 @@ async function checkStatus() {
       .filter(Boolean);
   });
 
-  // Filter affected lines (excluding Good Service & Information)
+  // Filter affected lines (excluding Good service, Information & Closure)
   const affectedLines = disruptedLines.filter(line => 
     !["Good service", "Information", "Closure"].includes(line.status)
   );
@@ -51,27 +51,26 @@ async function checkStatus() {
   // Extract disruption details by clicking each line's expand button
   for (const line of affectedLines) {
     const lineElementHandle = await page.evaluateHandle((lineName) => {
-      return Array.from(document.querySelectorAll('.rainbow-list-item')).find(el => 
-        el.innerText.includes(lineName)
-      );
+      return Array.from(document.querySelectorAll('.rainbow-list-item'))
+        .find(el => el.innerText.includes(lineName));
     }, line.lineName);
 
     if (lineElementHandle) {
-      const expandButton = await lineElementHandle.$("button"); // Properly select button
+      const expandButton = await lineElementHandle.$("button");
       if (expandButton) {
         await expandButton.click();
-        await page.waitForTimeout(1000);
-        
-        // Extract disruption details after expanding
+        await page.waitForTimeout(1500); // Wait for details to load
+
+        // Extract disruption details from the current element handle
         const details = await lineElementHandle.evaluate(el => {
           const detailsElement = el.querySelector(".disruption-details");
           return detailsElement ? detailsElement.innerText.trim() : "No additional details.";
         });
-    
         line.details = details;
+      } else {
+        line.details = "No additional details.";
       }
     }
-    
   }
 
   // Fetch bounding boxes separately using Puppeteer API
@@ -132,16 +131,16 @@ async function sendAlertWithDetails(affectedLines, screenshotPath) {
       text: `*TfL Status Alert:*\n${message}`,
     });
 
-    // Upload Screenshot with proper filename to fix Slack API warning
-    const result = await slackClient.files.uploadV2({
+    // Upload Screenshot with explicit filename
+    await slackClient.files.uploadV2({
       channel_id: SLACK_CHANNEL,
       file: fs.createReadStream(screenshotPath),
-      filename: "tfl_disruptions.png", // Explicitly setting filename
+      filename: "tfl_disruptions.png",
       title: "TfL Disruptions",
       initial_comment: `📸 Affected lines captured in screenshot.`,
     });
 
-    console.log("Disruption details & screenshot sent to Slack:", result.ok);
+    console.log("Disruption details & screenshot sent to Slack");
   } catch (error) {
     console.error("Failed to send alert:", error);
   }
