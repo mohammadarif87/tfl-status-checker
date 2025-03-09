@@ -32,7 +32,7 @@ async function checkStatus() {
       .map((item) => {
         const lineName = item.querySelector(".service-name")?.innerText.trim();
         const status = item.querySelector(".disruption-summary")?.innerText.trim();
-        return lineName && status ? { lineName, status, details: "" } : null;
+        return lineName && status ? { lineName, status } : null;
       })
       .filter(Boolean);
   });
@@ -48,8 +48,7 @@ async function checkStatus() {
     return;
   }
 
-  // Extract detailed info & calculate bounding boxes
-  const boundingBoxes = [];
+  // Extract disruption details by clicking each line's expand button
   for (const line of affectedLines) {
     const lineElementHandle = await page.evaluateHandle((lineName) => {
       return Array.from(document.querySelectorAll('.rainbow-list-item')).find(el => 
@@ -58,32 +57,40 @@ async function checkStatus() {
     }, line.lineName);
 
     if (lineElementHandle) {
-      const expandButton = await lineElementHandle.$("button");
+      const expandButton = await lineElementHandle.$("button"); // Properly select button
       if (expandButton) {
         await expandButton.click();
-        await page.waitForTimeout(1000); // Wait for the details to load
-
-        // Extract additional details **properly**
-        line.details = await page.evaluate((lineName) => {
-          const matchingItem = Array.from(document.querySelectorAll('.rainbow-list-item'))
+        await page.waitForTimeout(1000);
+        
+        // Extract disruption details after expanding
+        const details = await page.evaluate((lineName) => {
+          const lineElement = Array.from(document.querySelectorAll(".rainbow-list-item"))
             .find(el => el.innerText.includes(lineName));
-          if (matchingItem) {
-            const detailsElement = matchingItem.querySelector(".disruption-details");
-            return detailsElement ? detailsElement.innerText.trim() : "No additional details.";
-          }
-          return "No additional details.";
+          if (!lineElement) return "No additional details.";
+          const detailsElement = lineElement.querySelector(".disruption-details");
+          return detailsElement ? detailsElement.innerText.trim() : "No additional details.";
         }, line.lineName);
+    
+        line.details = details;
       }
+    }
+    
+  }
 
-      // Capture bounding box
-      const box = await lineElementHandle.boundingBox();
+  // Fetch bounding boxes separately using Puppeteer API
+  const boundingBoxes = [];
+  for (const line of affectedLines) {
+    const element = await page.evaluateHandle((lineName) => {
+      return Array.from(document.querySelectorAll('.rainbow-list-item'))
+        .find(el => el.innerText.includes(lineName));
+    }, line.lineName);
+    if (element) {
+      const box = await element.boundingBox();
       if (box) boundingBoxes.push(box);
-
-      await lineElementHandle.dispose(); // Free memory
     }
   }
 
-  // Compute clip region for screenshot
+  // Calculate the clip area based on bounding boxes
   const clip = boundingBoxes.reduce(
     (acc, box) => ({
       x: Math.min(acc.x, box.x),
@@ -94,13 +101,13 @@ async function checkStatus() {
     { x: Infinity, y: Infinity, width: 0, height: 0 }
   );
 
-  // Take a screenshot of affected lines
+  // Take a screenshot only of the affected area
   const screenshotPath = "tfl_disruptions.png";
   await page.screenshot({ path: screenshotPath, type: "png", clip });
 
   await browser.close();
 
-  // Send Slack alert with text & screenshot
+  // Send the alert with details and screenshot
   await sendAlertWithDetails(affectedLines, screenshotPath);
 }
 
@@ -119,26 +126,25 @@ async function sendAlertWithDetails(affectedLines, screenshotPath) {
   const slackClient = new WebClient(SLACK_BOT_TOKEN);
 
   const message = affectedLines
-    .map(line => `🚨 *${line.lineName}*: ${line.status}\n📌 ${line.details}`)
+    .map(line => `🚨 *${line.lineName}*: ${line.status}\n📌 ${line.details || "No additional details."}`)
     .join("\n\n");
 
   try {
-    // Send status text
     await slackClient.chat.postMessage({
       channel: SLACK_CHANNEL,
       text: `*TfL Status Alert:*\n${message}`,
     });
 
-    // Upload Screenshot
-    await slackClient.files.uploadV2({
+    // Upload Screenshot with proper filename to fix Slack API warning
+    const result = await slackClient.files.uploadV2({
       channel_id: SLACK_CHANNEL,
       file: fs.createReadStream(screenshotPath),
+      filename: "tfl_disruptions.png", // Explicitly setting filename
       title: "TfL Disruptions",
       initial_comment: `📸 Affected lines captured in screenshot.`,
-      filetype: "png"
     });
 
-    console.log("Disruption details & screenshot sent to Slack");
+    console.log("Disruption details & screenshot sent to Slack:", result.ok);
   } catch (error) {
     console.error("Failed to send alert:", error);
   }
