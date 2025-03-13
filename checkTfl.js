@@ -32,7 +32,8 @@ async function checkStatus() {
       .map((item) => {
         const lineName = item.querySelector(".service-name")?.innerText.trim();
         const status = item.querySelector(".disruption-summary")?.innerText.trim();
-        return lineName && status ? { lineName, status } : null;
+        const lineId = item.getAttribute("id")?.replace("line-", ""); // Extract unique line identifier
+        return lineName && status && lineId ? { lineName, status, lineId } : null;
       })
       .filter(Boolean);
   });
@@ -48,79 +49,44 @@ async function checkStatus() {
     return;
   }
 
-  // Extract disruption details by clicking each line's expand button
+  // Extract disruption details by navigating to each line's detailed URL
   for (const line of affectedLines) {
-    const lineElementHandle = await page.evaluateHandle((lineName) => {
-      return Array.from(document.querySelectorAll('.rainbow-list-item')).find(el => 
-        el.innerText.includes(lineName)
+    const lineUrl = `${TFL_URL}/#line-${line.lineId}`;
+    await page.goto(lineUrl, { waitUntil: "networkidle2" });
+
+    // Wait for content to load
+    await page.waitForSelector(".rainbow-list-content", { timeout: 5000 }).catch(() => null);
+
+    // Extract additional details
+    const details = await page.evaluate(() => {
+      const contentElement = document.querySelector(".rainbow-list-content");
+      if (!contentElement) return "No additional details.";
+      
+      // Get all sections within the content area
+      const sections = Array.from(contentElement.querySelectorAll(".section"));
+      
+      // Pick the section that does not include the 'Replan your journey' button text
+      const disruptionSection = sections.find(section => 
+        !section.innerText.includes("Replan your journey")
       );
-    }, line.lineName);
 
-    if (lineElementHandle) {
-      const expandButton = await lineElementHandle.$("button");
-      if (expandButton) {
-        await expandButton.click();
-        await page.waitForTimeout(1500); // Wait for details to load
-        
-        // Extract additional details from within the expanded content
-        const details = await lineElementHandle.evaluate(el => {
-          const contentElement = el.querySelector(".rainbow-list-content");
-          if (!contentElement) return "No additional details.";
-          // Get all sections within the content area
-          const sections = Array.from(contentElement.querySelectorAll(".section"));
-          // Pick the section that does not include the 'Replan your journey' button text
-          const disruptionSection = sections.find(section => 
-            !section.innerText.includes("Replan your journey")
-          );
-          return disruptionSection ? disruptionSection.innerText.trim() : "No additional details.";
-        });
-        line.details = details;
-      } else {
-        line.details = "No additional details.";
-      }
-    }
+      return disruptionSection ? disruptionSection.innerText.trim() : "No additional details.";
+    });
+
+    line.details = details;
   }
-
-  // Fetch bounding boxes separately using Puppeteer API
-  const boundingBoxes = [];
-  for (const line of affectedLines) {
-    const element = await page.evaluateHandle((lineName) => {
-      return Array.from(document.querySelectorAll('.rainbow-list-item'))
-        .find(el => el.innerText.includes(lineName));
-    }, line.lineName);
-    if (element) {
-      const box = await element.boundingBox();
-      if (box) boundingBoxes.push(box);
-    }
-  }
-
-  // Calculate the clip area based on bounding boxes
-  const clip = boundingBoxes.reduce(
-    (acc, box) => ({
-      x: Math.min(acc.x, box.x),
-      y: Math.min(acc.y, box.y),
-      width: Math.max(acc.width, box.x + box.width - acc.x),
-      height: Math.max(acc.height, box.y + box.height - acc.y),
-    }),
-    { x: Infinity, y: Infinity, width: 0, height: 0 }
-  );
-
-  // Take a screenshot only of the affected area
-  const screenshotPath = "tfl_disruptions.png";
-  await page.screenshot({ path: screenshotPath, type: "png", clip });
 
   await browser.close();
 
-  // Send the alert with details and screenshot
-  await sendAlertWithDetails(affectedLines, screenshotPath);
+  // Send the alert with details
+  await sendAlertWithDetails(affectedLines);
 }
 
-async function sendAlertWithDetails(affectedLines, screenshotPath) {
+async function sendAlertWithDetails(affectedLines) {
   const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
   const SLACK_CHANNEL = process.env.SLACK_CHANNEL;
 
   const { WebClient } = require("@slack/web-api");
-  const fs = require("fs");
 
   if (!SLACK_BOT_TOKEN) {
     console.log("No Slack bot token configured.");
@@ -139,16 +105,7 @@ async function sendAlertWithDetails(affectedLines, screenshotPath) {
       text: `*TfL Status Alert:*\n${message}`,
     });
 
-    // Upload Screenshot with explicit filename
-    await slackClient.files.uploadV2({
-      channel_id: SLACK_CHANNEL,
-      file: fs.createReadStream(screenshotPath),
-      filename: "tfl_disruptions.png",
-      title: "TfL Disruptions",
-      initial_comment: `📸 Affected lines captured in screenshot.`,
-    });
-
-    console.log("Disruption details & screenshot sent to Slack");
+    console.log("Disruption details sent to Slack");
   } catch (error) {
     console.error("Failed to send alert:", error);
   }
