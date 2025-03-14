@@ -23,25 +23,35 @@ async function checkStatus() {
     }
   }
 
+  
   // Wait for the status list
   await page.waitForSelector("#rainbow-list-tube-dlr-overground-elizabeth-line-tram");
-
+  
   // Extract disrupted lines
   const disruptedLines = await page.evaluate(() => {
-    return Array.from(document.querySelectorAll(".rainbow-list-item"))
-      .map((item) => {
-        const lineName = item.querySelector(".service-name")?.innerText.trim();
-        const status = item.querySelector(".disruption-summary")?.innerText.trim();
-        const lineId = item.getAttribute("id")?.replace("line-", ""); // Extract unique line identifier
-        return lineName && status && lineId ? { lineName, status, lineId } : null;
-      })
-      .filter(Boolean);
+    return Array.from(document.querySelectorAll(".rainbow-list-item")).map((item) => {
+      const lineText = item.innerText.trim(); // Get full text content
+      const lines = lineText.split("\n").map(text => text.trim()).filter(Boolean); // Split by new lines
+  
+      if (lines.length < 2) return null; // Ensure at least a name and status exist
+  
+      const lineName = lines[0]; // First line is always the name
+      const status = lines.slice(1).join(", "); // Join remaining text as status
+      const lineId = item.getAttribute("id")?.replace("line-", ""); // Extract unique identifier
+  
+      return { lineName, status, lineId };
+    }).filter(Boolean);
   });
-
+  
+  
+  // console.log(disruptedLines);
+  
   // Filter affected lines (excluding Good service, Information & Closure)
   const affectedLines = disruptedLines.filter(line => 
     !["Good service", "Information", "Closure"].includes(line.status)
   );
+  
+  // console.log("Extracted disrupted lines:", disruptedLines);
 
   if (affectedLines.length === 0) {
     console.log("No major disruptions.");
