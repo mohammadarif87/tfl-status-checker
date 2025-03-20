@@ -93,21 +93,14 @@ async function checkStatus() {
 
   // Extract disruption details
   for (const line of affectedLines) {
-    const lineUrl = `${TFL_URL}/#line-${line.lineId}`;
-    await page.goto(lineUrl, { waitUntil: "networkidle2" });
-    await page.waitForSelector(".rainbow-list-content", { timeout: 5000 }).catch(() => null);
-    const details = await page.evaluate(() => {
-      const contentElement = document.querySelector(".rainbow-list-content");
-      if (!contentElement) return "No additional details.";
-      const sections = Array.from(contentElement.querySelectorAll(".section"));
-      const disruptionSection = sections.find(section => 
-        !section.innerText.includes("Replan your journey")
-      );
-      return disruptionSection ? disruptionSection.innerText.trim() : "No additional details.";
-    });
-    line.details = details;
+    const detailsElement = await page.$(`#line-${line.lineId} .rainbow-list-content`);
+    if (detailsElement) {
+      line.details = await page.evaluate(el => el.innerText.trim(), detailsElement);
+    } else {
+      line.details = "No additional details.";
+    }
   }
-
+  
   await browser.close();
   await sendAlertWithDetails(affectedLines);
 }
