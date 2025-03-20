@@ -35,7 +35,8 @@ async function checkStatus() {
   // Extract disrupted lines
   const disruptedLines = await page.evaluate(() => {
     return Array.from(document.querySelectorAll(".rainbow-list-item"))
-      .map((item) => {
+      .filter(item => item.closest("#rainbow-list-tube-dlr-overground-elizabeth-line-tram")) // Ensure it's a tube line
+      .map((item) => {  
         const lineText = item.innerText.trim();
         const lines = lineText.split("\n").map(text => text.trim()).filter(Boolean);
         if (lines.length < 2) return null;
@@ -123,9 +124,17 @@ async function sendAlertWithDetails(affectedLines) {
 
   const slackClient = new WebClient(SLACK_BOT_TOKEN);
 
+  const uniqueLines = [];
   const message = affectedLines
-    .map(line => `🚨 *${line.lineName}*: ${line.status}\n📌 ${line.details || "No additional details."}`)
-    .join("\n\n");
+  .filter(line => {
+    if (!uniqueLines.includes(line.lineName)) {
+      uniqueLines.push(line.lineName);
+      return true;
+    }
+    return false;
+  })
+  .map(line => `🚨 *${line.lineName}*: ${line.status}\n📌 ${line.details || "No additional details."}`)
+  .join("\n\n");
 
   try {
     await slackClient.chat.postMessage({
