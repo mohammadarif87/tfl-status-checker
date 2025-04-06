@@ -1,5 +1,6 @@
 const puppeteer = require("puppeteer");
 const axios = require("axios");
+const fs = require("fs");
 require("dotenv").config();
 
 const TFL_URL = "https://tfl.gov.uk/tube-dlr-overground/status";
@@ -7,18 +8,12 @@ const TFL_URL = "https://tfl.gov.uk/tube-dlr-overground/status";
 async function checkStatus() {
   const browser = await puppeteer.launch({
     headless: "new",
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--single-process",
-    ],
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--single-process"],
   });
-
+  
   const page = await browser.newPage();
   await page.goto(TFL_URL, { waitUntil: "networkidle2" });
-
+  
   // Accept Cookies if present
   const cookieBanner = await page.$("#cb-cookiebanner");
   if (cookieBanner) {
@@ -28,119 +23,130 @@ async function checkStatus() {
       console.log("Cookie Policy Accepted");
     }
   }
+  
+  // Wait for 4 seconds to ensure the page is fully rendered
+  await new Promise(resolve => setTimeout(resolve, 2000));
 
-  // Wait for the status list
-  await page.waitForSelector("#rainbow-list-tube-dlr-overground-elizabeth-line-tram");
+  // Refresh the page
+  await page.reload();
+  console.log("Page Refreshed");
 
+  // Wait for 4 seconds to ensure the page is fully rendered without the cookie policy
+  await new Promise(resolve => setTimeout(resolve, 2000));
+
+  // Wait for disruptions list
+  await page.waitForSelector(".disruptions-list");
+  
   // Extract disrupted lines
-  const disruptedLines = await page.evaluate(() => {
-    return Array.from(document.querySelectorAll(".rainbow-list-item"))
-      .filter(item => item.closest("#rainbow-list-tube-dlr-overground-elizabeth-line-tram")) // Ensure it's a tube line
-      .map((item) => {  
-        const lineText = item.innerText.trim();
-        const lines = lineText.split("\n").map(text => text.trim()).filter(Boolean);
-        if (lines.length < 2) return null;
-
-        const lineName = lines[0];
-        const status = lines.slice(1).join(", ");
-        const lineId = item.getAttribute("id")?.replace("line-", "");
-
-        return { lineName, status, lineId, element: item };
-      })
-      .filter(Boolean);
-  });
-
-  // Remove duplicate disruptions for the same line
-  const uniqueDisruptions = disruptedLines.reduce((acc, line) => {
-    if (!acc.some(existing => existing.lineName === line.lineName)) {
-      acc.push(line);
+  const disruptedLines = await page.evaluate(async () => {
+    const lines = [];
+    const accordions = document.querySelectorAll(".disruptions-list [data-testid='headles-accordion-root-testid']");
+    
+    for (const item of accordions) {
+      const lineName = item.querySelector("[data-testid='accordion-name']")?.innerText.trim();
+      const status = item.querySelector("[data-testid='line-status']")?.innerText.trim();
+      
+      if (lineName && status) {
+        // Click the arrow to expand the details
+        const trigger = item.querySelector(".CustomAccordion_triggerWrapper__kvoYn");
+        if (trigger) {
+          trigger.click();
+          // Wait for the content to load
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        // Get the details from the panel
+        const details = item.querySelector(".CustomAccordion_panel__vp6GJ")?.innerText.trim();
+        
+        lines.push({
+          lineName,
+          status,
+          details: details || "No additional details available"
+        });
+      }
     }
-    return acc;
-  }, []);
-
-
-  // Filter affected lines (excluding Good service, Information & Closure)
-  const affectedLines = uniqueDisruptions.filter(line => 
+    
+    // Use a Map to remove duplicates (keys are line names)
+    return Array.from(new Map(lines.map(line => [line.lineName, line])).values());
+  });  
+  
+  const affectedLines = disruptedLines.filter(line => 
     !["Good service", "Information", "Closure"].includes(line.status)
   );
-
+  
   if (affectedLines.length === 0) {
     console.log("No major disruptions.");
     await browser.close();
     return;
   }
-
-  // Capture cropped screenshot of only affected lines
-  const boundingBoxes = await Promise.all(
-    affectedLines.map(async (line) => {
-      const element = await page.$(`#line-${line.lineId}`);
-      return element ? await element.boundingBox() : null;
-    })
-  );
-
-  const validBoxes = boundingBoxes.filter(box => box !== null);
-  if (validBoxes.length > 0) {
-    const minY = Math.min(...validBoxes.map(box => box.y));
-    const maxY = Math.max(...validBoxes.map(box => box.y + box.height));
-    const screenshotRegion = {
-      x: 0,
-      y: minY,
-      width: 800,
-      height: maxY - minY,
-    };
-    await page.screenshot({ path: "disruptions.png", clip: screenshotRegion });
+  
+  // Screenshot the disrupted section
+  //const disruptionSection = await page.$("#tfl-status-tube-content");
+  const disruptionSection = await page.$("#tfl-status-tube");
+  //const disruptionSection = await page.$(".disruptions-list");
+  if (disruptionSection) {
+    //await page.evaluate(el => el.scrollIntoView(), disruptionSection);  // Ensure visibility
+    await disruptionSection.screenshot({ path: "disruptions.png" });
+    console.log("Screenshot saved: disruptions.png");
   }
 
-  // Extract disruption details
-  for (const line of affectedLines) {
-    const detailsElement = await page.$(`#line-${line.lineId} .rainbow-list-content`);
-    if (detailsElement) {
-      line.details = await page.evaluate(el => el.innerText.trim(), detailsElement);
-    } else {
-      line.details = "No additional details.";
-    }
-  }
+  
+  // Save JSON data
+  fs.writeFileSync("disruptions.json", JSON.stringify(affectedLines, null, 2));
+  console.log("Disruptions saved to disruptions.json");
   
   await browser.close();
-  await sendAlertWithDetails(affectedLines);
+  await sendAlertWithScreenshot();
 }
 
-async function sendAlertWithDetails(affectedLines) {
+async function sendAlertWithScreenshot() {
   const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
   const SLACK_CHANNEL = process.env.SLACK_CHANNEL;
   const { WebClient } = require("@slack/web-api");
-
+  
   if (!SLACK_BOT_TOKEN) {
     console.log("No Slack bot token configured.");
     return;
   }
-
+  
   const slackClient = new WebClient(SLACK_BOT_TOKEN);
-
-  const uniqueLines = [];
+  let affectedLines;
+  try {
+    affectedLines = JSON.parse(fs.readFileSync("disruptions.json"));
+  } catch (error) {
+    console.error("Failed to read disruptions.json:", error);
+    return;
+  }
+  
+  if (!affectedLines.length) {
+    console.log("No major disruptions to report.");
+    return;
+  }
+  
   const message = affectedLines
-  .filter(line => {
-    if (!uniqueLines.includes(line.lineName)) {
-      uniqueLines.push(line.lineName);
-      return true;
-    }
-    return false;
-  })
-  .map(line => `🚨 *${line.lineName}*: ${line.status}\n📌 ${line.details || "No additional details."}`)
-  .join("\n\n");
-
+    .map(line => `🚨 *${line.lineName}*: ${line.status}`)
+    .join("\n");
+  
   try {
     await slackClient.chat.postMessage({
       channel: SLACK_CHANNEL,
       text: "*TfL Status Alert:*",
-      attachments: [
-        {
-          text: message,
-          image_url: "disruptions.png"
-        }
-      ]
+      attachments: [{ text: message }],
     });
-    console.log("Disruption details sent to Slack");
+    
+    const response = await slackClient.files.uploadV2({
+      channels: SLACK_CHANNEL,
+      file: fs.createReadStream("disruptions.png"),
+      title: "TfL Disruptions",
+    });
+    
+    await slackClient.chat.postMessage({
+      channel: SLACK_CHANNEL,
+      text: "*TfL Status Alert:*",
+      attachments: [{ text: message, image_url: response.file.url_private }],
+    });    
+    
+    console.log("Disruption details and screenshot sent to Slack");
   } catch (error) {
     console.error("Failed to send alert:", error);
   }
