@@ -24,14 +24,14 @@ async function checkStatus() {
     }
   }
   
-  // Wait for 4 seconds to ensure the page is fully rendered
+  // Wait to ensure the page is fully rendered
   await new Promise(resolve => setTimeout(resolve, 2000));
 
-  // Refresh the page
+  // Refresh the page without any gradient overlay from the cookie policy
   await page.reload();
   console.log("Page Refreshed");
 
-  // Wait for 4 seconds to ensure the page is fully rendered without the cookie policy
+  // Wait to ensure the page is fully rendered without the cookie policy
   await new Promise(resolve => setTimeout(resolve, 2000));
 
   // Wait for disruptions list
@@ -124,27 +124,36 @@ async function sendAlertWithScreenshot() {
   }
   
   const message = affectedLines
-    .map(line => `🚨 *${line.lineName}*: ${line.status}`)
-    .join("\n");
+    .map(line => `🚨 *${line.lineName}*: ${line.status}\n_${line.details}_`)
+    .join("\n\n");
   
   try {
+    // First send the text message
     await slackClient.chat.postMessage({
       channel: SLACK_CHANNEL,
       text: "*TfL Status Alert:*",
       attachments: [{ text: message }],
     });
     
+    // Then upload the screenshot with proper filename
     const response = await slackClient.files.uploadV2({
-      channels: SLACK_CHANNEL,
+      channel_id: SLACK_CHANNEL,
       file: fs.createReadStream("disruptions.png"),
-      title: "TfL Disruptions",
+      filename: "tfl-disruptions.png",
+      title: "TfL Disruptions Screenshot",
     });
     
-    await slackClient.chat.postMessage({
-      channel: SLACK_CHANNEL,
-      text: "*TfL Status Alert:*",
-      attachments: [{ text: message, image_url: response.file.url_private }],
-    });    
+    // Send a follow-up message with the screenshot
+    if (response && response.file) {
+      await slackClient.chat.postMessage({
+        channel: SLACK_CHANNEL,
+        text: "*TfL Status Alert Screenshot:*",
+        attachments: [{ 
+          text: message,
+          image_url: response.file.url_private 
+        }],
+      });
+    }
     
     console.log("Disruption details and screenshot sent to Slack");
   } catch (error) {
