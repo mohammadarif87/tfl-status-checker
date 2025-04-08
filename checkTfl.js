@@ -124,7 +124,7 @@ async function sendAlertWithScreenshot() {
   }
   
   const message = affectedLines
-    .map(line => `🚨 *${line.lineName}*: ${line.status}\n_${line.details}_`)
+    .map(line => `🚨 *${line.lineName}*: ${line.status}\n📌 _${line.details}_`)
     .join("\n\n");
   
   try {
