@@ -3,8 +3,8 @@ name: Check TFL Line Status
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 7 * * 1-5'  # Runs at 07:30 AM (Monday to Friday)
-    - cron: '30 16 * * 1-5' # Runs at 04:30 PM (Monday to Friday)
+    - cron: '30 6 * * 1-5'  # Runs at 07:30 AM (Monday to Friday)
+    - cron: '30 15 * * 1-5' # Runs at 04:30 PM (Monday to Friday)
 
 jobs:
   check-status:
