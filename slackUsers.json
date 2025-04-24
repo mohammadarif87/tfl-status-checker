@@ -1,0 +1,81 @@
+{
+  "lines": {
+    "Bakerloo": {
+      "name": "Bakerloo Line",
+      "users": ["U12345678", "U87654321"],
+      "description": "Bakerloo Line - Harrow & Wealdstone to Elephant & Castle"
+    },
+    "Central": {
+      "name": "Central Line",
+      "users": ["U11223344", "U44332211"],
+      "description": "Central Line - Ealing Broadway/West Ruislip to Epping/Hainault"
+    },
+    "Victoria": {
+      "name": "Victoria Line",
+      "users": ["U55667788", "U88776655"],
+      "description": "Victoria Line - Walthamstow Central to Brixton"
+    },
+    "Jubilee": {
+      "name": "Jubilee Line",
+      "users": ["U99887766", "U66778899"],
+      "description": "Jubilee Line - Stanmore to Stratford"
+    },
+    "Northern": {
+      "name": "Northern Line",
+      "users": ["U44556677", "U77665544"],
+      "description": "Northern Line - Edgware/High Barnet to Morden"
+    },
+    "Piccadilly": {
+      "name": "Piccadilly Line",
+      "users": ["U33445566", "U66554433"],
+      "description": "Piccadilly Line - Cockfosters to Heathrow/Uxbridge"
+    },
+    "District": {
+      "name": "District Line",
+      "users": ["U22334455", "U55443322"],
+      "description": "District Line - Upminster to Ealing Broadway/Richmond/Wimbledon"
+    },
+    "Circle": {
+      "name": "Circle Line",
+      "users": ["U11223344", "U44332211"],
+      "description": "Circle Line - Hammersmith to Edgware Road"
+    },
+    "Hammersmith & City": {
+      "name": "Hammersmith & City Line",
+      "users": ["U99887766", "U66778899"],
+      "description": "Hammersmith & City Line - Hammersmith to Barking"
+    },
+    "Metropolitan": {
+      "name": "Metropolitan Line",
+      "users": ["U55667788", "U88776655"],
+      "description": "Metropolitan Line - Amersham/Chesham/Watford to Aldgate"
+    },
+    "Waterloo & City": {
+      "name": "Waterloo & City Line",
+      "users": ["U44556677", "U77665544"],
+      "description": "Waterloo & City Line - Waterloo to Bank"
+    },
+    "DLR": {
+      "name": "Docklands Light Railway",
+      "users": ["U33445566", "U66554433"],
+      "description": "Docklands Light Railway - Bank/Lewisham to Woolwich Arsenal/Stratford International"
+    },
+    "London Overground": {
+      "name": "London Overground",
+      "users": ["U22334455", "U55443322"],
+      "description": "London Overground - Various routes across London"
+    },
+    "Elizabeth": {
+      "name": "Elizabeth Line",
+      "users": ["U11223344", "U44332211"],
+      "description": "Elizabeth Line - Reading/Heathrow to Shenfield/Abbey Wood"
+    },
+    "Tram": {
+      "name": "London Trams",
+      "users": ["U99887766", "U66778899"],
+      "description": "London Trams - Wimbledon to Beckenham Junction/New Addington"
+    }
+  },
+  "defaultUsers": ["U12345678", "U87654321"],
+  "lastUpdated": "2023-11-15"
+}
