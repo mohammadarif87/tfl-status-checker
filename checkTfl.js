@@ -130,14 +130,18 @@ async function sendAlertWithScreenshot() {
     .map(line => {
       // Get users associated with this line
       let userMentions = "";
-      if (slackUsers.lines[line.lineName] && slackUsers.lines[line.lineName].users) {
-        userMentions = slackUsers.lines[line.lineName].users.map(userId => `<@${userId}>`).join(" ");
-      } else {
-        // If no specific users for this line, use default users
-        userMentions = slackUsers.defaultUsers.map(userId => `<@${userId}>`).join(" ");
+      if (slackUsers.lines[line.lineName] && 
+          slackUsers.lines[line.lineName].users && 
+          slackUsers.lines[line.lineName].users.length > 0 && 
+          slackUsers.lines[line.lineName].users[0] !== "") {
+        userMentions = slackUsers.lines[line.lineName].users
+          .filter(userId => userId && userId.trim() !== "")
+          .map(userId => `<@${userId}>`)
+          .join(" ");
       }
       
-      return `🚨 *${line.lineName}*: ${line.status}\n📌 _${line.details}_\n${userMentions}`;
+      // Only add user mentions if there are any
+      return `🚨 *${line.lineName}*: ${line.status}\n📌 _${line.details}_${userMentions ? `\n${userMentions}` : ""}`;
     })
     .join("\n\n");
   

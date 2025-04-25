@@ -2,7 +2,6 @@
   "lines": {
     "Bakerloo": {
       "name": "Bakerloo Line",
-      "users": [""],
       "description": "Bakerloo Line - Harrow & Wealdstone to Elephant & Castle"
     },
     "Central": {
@@ -12,57 +11,46 @@
     },
     "Victoria": {
       "name": "Victoria Line",
-      "users": [""],
       "description": "Victoria Line - Walthamstow Central to Brixton"
     },
     "Jubilee": {
       "name": "Jubilee Line",
-      "users": [""],
       "description": "Jubilee Line - Stanmore to Stratford"
     },
     "Northern": {
       "name": "Northern Line",
-      "users": [""],
       "description": "Northern Line - Edgware/High Barnet to Morden"
     },
     "Piccadilly": {
       "name": "Piccadilly Line",
-      "users": [""],
       "description": "Piccadilly Line - Cockfosters to Heathrow/Uxbridge"
     },
     "District": {
       "name": "District Line",
-      "users": [""],
       "description": "District Line - Upminster to Ealing Broadway/Richmond/Wimbledon"
     },
     "Circle": {
       "name": "Circle Line",
-      "users": [""],
       "description": "Circle Line - Hammersmith to Edgware Road"
     },
     "Hammersmith & City": {
       "name": "Hammersmith & City Line",
-      "users": [""],
       "description": "Hammersmith & City Line - Hammersmith to Barking"
     },
     "Metropolitan": {
       "name": "Metropolitan Line",
-      "users": [""],
       "description": "Metropolitan Line - Amersham/Chesham/Watford to Aldgate"
     },
     "Waterloo & City": {
       "name": "Waterloo & City Line",
-      "users": [""],
       "description": "Waterloo & City Line - Waterloo to Bank"
     },
     "DLR": {
       "name": "Docklands Light Railway",
-      "users": [""],
       "description": "Docklands Light Railway - Bank/Lewisham to Woolwich Arsenal/Stratford International"
     },
     "London Overground": {
       "name": "London Overground",
-      "users": [""],
       "description": "London Overground - Various routes across London"
     },
     "Elizabeth": {
@@ -72,9 +60,7 @@
     },
     "Tram": {
       "name": "London Trams",
-      "users": [""],
       "description": "London Trams - Wimbledon to Beckenham Junction/New Addington"
     }
-  },
-  "defaultUsers": [""]
+  }
 }
