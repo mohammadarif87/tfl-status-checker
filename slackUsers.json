@@ -1,0 +1,65 @@
+{
+  "lines": {
+    "Bakerloo": {
+      "name": "Bakerloo Line",
+      "description": "Bakerloo Line - Harrow & Wealdstone to Elephant & Castle"
+    },
+    "Central": {
+      "name": "Central Line",
+      "description": "Central Line - Ealing Broadway/West Ruislip to Epping/Hainault"
+    },
+    "Victoria": {
+      "name": "Victoria Line",
+      "description": "Victoria Line - Walthamstow Central to Brixton"
+    },
+    "Jubilee": {
+      "name": "Jubilee Line",
+      "description": "Jubilee Line - Stanmore to Stratford"
+    },
+    "Northern": {
+      "name": "Northern Line",
+      "description": "Northern Line - Edgware/High Barnet to Morden"
+    },
+    "Piccadilly": {
+      "name": "Piccadilly Line",
+      "description": "Piccadilly Line - Cockfosters to Heathrow/Uxbridge"
+    },
+    "District": {
+      "name": "District Line",
+      "description": "District Line - Upminster to Ealing Broadway/Richmond/Wimbledon"
+    },
+    "Circle": {
+      "name": "Circle Line",
+      "description": "Circle Line - Hammersmith to Edgware Road"
+    },
+    "Hammersmith & City": {
+      "name": "Hammersmith & City Line",
+      "description": "Hammersmith & City Line - Hammersmith to Barking"
+    },
+    "Metropolitan": {
+      "name": "Metropolitan Line",
+      "description": "Metropolitan Line - Amersham/Chesham/Watford to Aldgate"
+    },
+    "Waterloo & City": {
+      "name": "Waterloo & City Line",
+      "description": "Waterloo & City Line - Waterloo to Bank"
+    },
+    "DLR": {
+      "name": "Docklands Light Railway",
+      "description": "Docklands Light Railway - Bank/Lewisham to Woolwich Arsenal/Stratford International"
+    },
+    "London Overground": {
+      "name": "London Overground",
+      "description": "London Overground - Various routes across London"
+    },
+    "Elizabeth": {
+      "name": "Elizabeth Line",
+      "users": ["U01RFB2KGAK", "U05QM7RGBF0", "U01RPAVMZUN", "U02CGP1SLRK"],
+      "description": "Elizabeth Line - Reading/Heathrow to Shenfield/Abbey Wood"
+    },
+    "Tram": {
+      "name": "London Trams",
+      "description": "London Trams - Wimbledon to Beckenham Junction/New Addington"
+    }
+  }
+}

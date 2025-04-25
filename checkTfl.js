@@ -111,10 +111,13 @@ async function sendAlertWithScreenshot() {
   
   const slackClient = new WebClient(SLACK_BOT_TOKEN);
   let affectedLines;
+  let slackUsers;
+  
   try {
     affectedLines = JSON.parse(fs.readFileSync("disruptions.json"));
+    slackUsers = JSON.parse(fs.readFileSync("slackUsers.json"));
   } catch (error) {
-    console.error("Failed to read disruptions.json:", error);
+    console.error("Failed to read JSON files:", error);
     return;
   }
   
@@ -124,7 +127,22 @@ async function sendAlertWithScreenshot() {
   }
   
   const message = affectedLines
-    .map(line => `🚨 *${line.lineName}*: ${line.status}\n📌 _${line.details}_`)
+    .map(line => {
+      // Get users associated with this line
+      let userMentions = "";
+      if (slackUsers.lines[line.lineName] && 
+          slackUsers.lines[line.lineName].users && 
+          slackUsers.lines[line.lineName].users.length > 0 && 
+          slackUsers.lines[line.lineName].users[0] !== "") {
+        userMentions = slackUsers.lines[line.lineName].users
+          .filter(userId => userId && userId.trim() !== "")
+          .map(userId => `<@${userId}>`)
+          .join(" ");
+      }
+      
+      // Only add user mentions if there are any
+      return `🚨 *${line.lineName}*: ${line.status}\n📌 _${line.details}_${userMentions ? `\n${userMentions}` : ""}`;
+    })
     .join("\n\n");
   
   try {
