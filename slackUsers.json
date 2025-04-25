@@ -6,7 +6,6 @@
     },
     "Central": {
       "name": "Central Line",
-      "users": ["U01RFB2KGAK"],
       "description": "Central Line - Ealing Broadway/West Ruislip to Epping/Hainault"
     },
     "Victoria": {
