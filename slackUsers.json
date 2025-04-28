@@ -18,6 +18,7 @@
     },
     "Northern": {
       "name": "Northern Line",
+      "users": ["U044MPN39DL"],
       "description": "Northern Line - Edgware/High Barnet to Morden"
     },
     "Piccadilly": {
