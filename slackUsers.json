@@ -6,10 +6,12 @@
     },
     "Central": {
       "name": "Central Line",
+      "users": ["U04UGGEREKZ"],
       "description": "Central Line - Ealing Broadway/West Ruislip to Epping/Hainault"
     },
     "Victoria": {
       "name": "Victoria Line",
+      "users": ["U04PY8GL4VD"],
       "description": "Victoria Line - Walthamstow Central to Brixton"
     },
     "Jubilee": {
@@ -18,11 +20,12 @@
     },
     "Northern": {
       "name": "Northern Line",
-      "users": ["U044MPN39DL"],
+      "users": ["U044MPN39DL", "U084LK27MJ9"],
       "description": "Northern Line - Edgware/High Barnet to Morden"
     },
     "Piccadilly": {
       "name": "Piccadilly Line",
+      "users": ["U04PY8GL4VD"],
       "description": "Piccadilly Line - Cockfosters to Heathrow/Uxbridge"
     },
     "District": {
@@ -35,6 +38,7 @@
     },
     "Hammersmith & City": {
       "name": "Hammersmith & City Line",
+      "users": ["U04UGGEREKZ"],
       "description": "Hammersmith & City Line - Hammersmith to Barking"
     },
     "Metropolitan": {
@@ -43,6 +47,7 @@
     },
     "Waterloo & City": {
       "name": "Waterloo & City Line",
+      "users": ["U084LK27MJ9"],
       "description": "Waterloo & City Line - Waterloo to Bank"
     },
     "DLR": {
@@ -51,11 +56,12 @@
     },
     "London Overground": {
       "name": "London Overground",
+      "users": ["U04PY8GL4VD"],
       "description": "London Overground - Various routes across London"
     },
     "Elizabeth": {
       "name": "Elizabeth Line",
-      "users": ["U01RFB2KGAK", "U05QM7RGBF0", "U01RPAVMZUN", "U02CGP1SLRK"],
+      "users": ["U01RFB2KGAK", "U05QM7RGBF0", "U01RPAVMZUN", "U02CGP1SLRK", "U011A22FAJH", "U08FHMD505B"],
       "description": "Elizabeth Line - Reading/Heathrow to Shenfield/Abbey Wood"
     },
     "Tram": {
