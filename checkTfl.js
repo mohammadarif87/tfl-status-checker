@@ -4,6 +4,7 @@ const fs = require("fs");
 require("dotenv").config();
 
 const TFL_URL = "https://tfl.gov.uk/tube-dlr-overground/status";
+const PREVIOUS_DISRUPTIONS_FILE = "previous_disruptions.json";
 
 async function checkStatus() {
   const browser = await puppeteer.launch({
@@ -12,7 +13,19 @@ async function checkStatus() {
   });
   
   const page = await browser.newPage();
-  await page.goto(TFL_URL, { waitUntil: "networkidle2" });
+  
+  // Set a longer default timeout for all operations
+  page.setDefaultNavigationTimeout(60000);
+  page.setDefaultTimeout(60000);
+  
+  // Navigate to the page with increased timeout
+  await page.goto(TFL_URL, { 
+    waitUntil: "networkidle2",
+    timeout: 60000
+  });
+  
+  // Wait an additional 5 seconds to ensure the page is fully loaded
+  await new Promise(resolve => setTimeout(resolve, 5000));
   
   // Accept Cookies if present
   const cookieBanner = await page.$("#cb-cookiebanner");
@@ -96,10 +109,53 @@ async function checkStatus() {
   console.log("Disruptions saved to disruptions.json");
   
   await browser.close();
-  await sendAlertWithScreenshot();
+  
+  // Check if there are changes compared to previous disruptions
+  const hasChanges = await checkForChanges(affectedLines);
+  
+  // Only send alert if there are changes
+  if (hasChanges) {
+    await sendAlertWithScreenshot(hasChanges === "update");
+  } else {
+    console.log("No changes in disruptions since last check. Skipping Slack notification.");
+  }
+  
+  // Save current disruptions as previous for next comparison
+  fs.writeFileSync(PREVIOUS_DISRUPTIONS_FILE, JSON.stringify(affectedLines, null, 2));
+  console.log("Previous disruptions saved for future comparison");
 }
 
-async function sendAlertWithScreenshot() {
+async function checkForChanges(currentDisruptions) {
+  try {
+    // Check if previous disruptions file exists
+    if (!fs.existsSync(PREVIOUS_DISRUPTIONS_FILE)) {
+      console.log("No previous disruptions file found. This is the first run.");
+      return "new";
+    }
+    
+    // Read previous disruptions
+    const previousDisruptions = JSON.parse(fs.readFileSync(PREVIOUS_DISRUPTIONS_FILE));
+    
+    // Compare current and previous disruptions
+    if (JSON.stringify(currentDisruptions) === JSON.stringify(previousDisruptions)) {
+      return false; // No changes
+    }
+    
+    // Check if this is an update (some lines are the same, some are different)
+    const currentLines = new Set(currentDisruptions.map(line => line.lineName));
+    const previousLines = new Set(previousDisruptions.map(line => line.lineName));
+    
+    // If there are any lines in common, this is an update
+    const hasCommonLines = [...currentLines].some(line => previousLines.has(line));
+    
+    return hasCommonLines ? "update" : "new";
+  } catch (error) {
+    console.error("Error comparing disruptions:", error);
+    return "new"; // Default to sending a new message if there's an error
+  }
+}
+
+async function sendAlertWithScreenshot(isUpdate = false) {
   const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
   const SLACK_CHANNEL = process.env.SLACK_CHANNEL;
   const { WebClient } = require("@slack/web-api");
@@ -149,7 +205,7 @@ async function sendAlertWithScreenshot() {
     // First send the text message
     await slackClient.chat.postMessage({
       channel: SLACK_CHANNEL,
-      text: "*TfL Status Alert:*",
+      text: isUpdate ? "*UPDATE: TfL Status Alert:*" : "*TfL Status Alert:*",
       attachments: [{ text: message }],
     });
     
@@ -158,14 +214,14 @@ async function sendAlertWithScreenshot() {
       channel_id: SLACK_CHANNEL,
       file: fs.createReadStream("disruptions.png"),
       filename: "tfl-disruptions.png",
-      title: "TfL Disruptions Screenshot",
+      title: isUpdate ? "TfL Disruptions Update Screenshot" : "TfL Disruptions Screenshot",
     });
     
     // Send a follow-up message with the screenshot
     if (response && response.file) {
       await slackClient.chat.postMessage({
         channel: SLACK_CHANNEL,
-        text: "*TfL Status Alert Screenshot:*",
+        text: isUpdate ? "*UPDATE: TfL Status Alert Screenshot:*" : "*TfL Status Alert Screenshot:*",
         attachments: [{ 
           text: message,
           image_url: response.file.url_private 
@@ -173,7 +229,7 @@ async function sendAlertWithScreenshot() {
       });
     }
     
-    console.log("Disruption details and screenshot sent to Slack");
+    console.log(`Disruption details and screenshot sent to Slack${isUpdate ? " (UPDATE)" : ""}`);
   } catch (error) {
     console.error("Failed to send alert:", error);
   }
