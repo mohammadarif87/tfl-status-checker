@@ -90,6 +90,9 @@ async function checkStatus() {
   if (affectedLines.length === 0) {
     console.log("No major disruptions.");
     await browser.close();
+    
+    // Send a message to Slack indicating no disruptions
+    await sendNoDisruptionsMessage();
     return;
   }
   
@@ -232,6 +235,33 @@ async function sendAlertWithScreenshot(isUpdate = false) {
     console.log(`Disruption details and screenshot sent to Slack${isUpdate ? " (UPDATE)" : ""}`);
   } catch (error) {
     console.error("Failed to send alert:", error);
+  }
+}
+
+async function sendNoDisruptionsMessage() {
+  const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN;
+  const SLACK_CHANNEL = process.env.SLACK_CHANNEL;
+  const { WebClient } = require("@slack/web-api");
+  
+  if (!SLACK_BOT_TOKEN) {
+    console.log("No Slack bot token configured.");
+    return;
+  }
+  
+  const slackClient = new WebClient(SLACK_BOT_TOKEN);
+  
+  try {
+    await slackClient.chat.postMessage({
+      channel: SLACK_CHANNEL,
+      text: "*TfL Status Update:*",
+      attachments: [{
+        text: "✅ All TfL lines are running with good service. No major disruptions reported.",
+        color: "good"
+      }]
+    });
+    console.log("No disruptions message sent to Slack");
+  } catch (error) {
+    console.error("Failed to send no disruptions message:", error);
   }
 }
 
