@@ -24,6 +24,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: previous-disruptions
+          path: previous_disruptions.json
           if-no-files-found: ignore
 
       - name: Install dependencies
