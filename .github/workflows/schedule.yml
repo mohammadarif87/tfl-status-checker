@@ -21,7 +21,7 @@ jobs:
           node-version: 22.14.0
 
       - name: Download previous disruptions
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@main
         with:
           name: previous-disruptions
           path: previous_disruptions.json
@@ -38,7 +38,7 @@ jobs:
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
 
       - name: Upload previous disruptions
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@main
         with:
           name: previous-disruptions
           path: previous_disruptions.json
