@@ -4,7 +4,9 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '30 6 * * 1-5'  # Runs at 07:30 AM (Monday to Friday)
+    - cron: '00 7 * * 1-5'  # Runs at 08:0 AM (Monday to Friday)
     - cron: '30 15 * * 1-5' # Runs at 04:30 PM (Monday to Friday)
+    - cron: '00 16 * * 1-5' # Runs at 05:00 PM (Monday to Friday)
 
 jobs:
   check-status:
@@ -18,6 +20,12 @@ jobs:
         with:
           node-version: 22.14.0
 
+      - name: Download previous disruptions
+        uses: actions/download-artifact@v3
+        with:
+          name: previous-disruptions
+          if-no-files-found: ignore
+
       - name: Install dependencies
         run: npm install
 
@@ -27,4 +35,12 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+
+      - name: Upload previous disruptions
+        uses: actions/upload-artifact@v3
+        with:
+          name: previous-disruptions
+          path: previous_disruptions.json
+          if-no-files-found: ignore
+          retention-days: 1
 
