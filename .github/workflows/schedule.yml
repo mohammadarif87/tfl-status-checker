@@ -20,15 +20,18 @@ jobs:
         with:
           node-version: 22.14.0
 
-      - name: Create empty previous disruptions file
-        run: echo '[]' > previous_disruptions.json
-
-      - name: Download previous disruptions
-        uses: actions/download-artifact@main
-        continue-on-error: true
+      - name: Cache previous disruptions
+        uses: actions/cache@v3
+        id: cache
         with:
-          name: previous-disruptions
           path: previous_disruptions.json
+          key: ${{ runner.os }}-previous-disruptions
+          restore-keys: |
+            ${{ runner.os }}-previous-disruptions-
+
+      - name: Create empty previous disruptions file if not cached
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: echo '[]' > previous_disruptions.json
 
       - name: Install dependencies
         run: npm install
@@ -40,10 +43,10 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
 
-      - name: Upload previous disruptions
-        uses: actions/upload-artifact@main
+      - name: Save previous disruptions to cache
+        uses: actions/cache/save@v3
+        if: always()
         with:
-          name: previous-disruptions
           path: previous_disruptions.json
-          retention-days: 1
+          key: ${{ runner.os }}-previous-disruptions-${{ github.run_id }}
 
