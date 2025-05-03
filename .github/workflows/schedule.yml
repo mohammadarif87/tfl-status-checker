@@ -20,18 +20,15 @@ jobs:
         with:
           node-version: 22.14.0
 
-      - name: Create empty previous disruptions file if it doesn't exist
-        run: |
-          if [ ! -f previous_disruptions.json ]; then
-            echo '[]' > previous_disruptions.json
-          fi
+      - name: Create empty previous disruptions file
+        run: echo '[]' > previous_disruptions.json
 
       - name: Download previous disruptions
         uses: actions/download-artifact@main
+        continue-on-error: true
         with:
           name: previous-disruptions
           path: previous_disruptions.json
-          if-no-files-found: ignore
 
       - name: Install dependencies
         run: npm install
