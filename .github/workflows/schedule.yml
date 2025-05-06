@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '30 6 * * 1-5'  # Runs at 07:30 AM (Monday to Friday)
-    - cron: '00 7 * * 1-5'  # Runs at 08:0 AM (Monday to Friday)
+    - cron: '00 7 * * 1-5'  # Runs at 08:00 AM (Monday to Friday)
     - cron: '30 15 * * 1-5' # Runs at 04:30 PM (Monday to Friday)
     - cron: '00 16 * * 1-5' # Runs at 05:00 PM (Monday to Friday)
 
@@ -45,8 +45,14 @@ jobs:
 
       - name: Save previous disruptions to cache
         uses: actions/cache/save@v3
-        if: always()
+        if: always() && (github.event_name != 'schedule' || (github.event.schedule != '0 7 * * 1-5' && github.event.schedule != '0 16 * * 1-5'))
         with:
           path: previous_disruptions.json
           key: ${{ runner.os }}-previous-disruptions
+
+      - name: Clear cache for specific runs
+        if: github.event_name == 'schedule' && (github.event.schedule == '0 7 * * 1-5' || github.event.schedule == '0 16 * * 1-5')
+        run: |
+          echo '[]' > previous_disruptions.json
+          echo "Cache cleared for ${{ github.event.schedule }} run"
 
