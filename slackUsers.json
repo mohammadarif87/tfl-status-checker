@@ -25,7 +25,7 @@
     },
     "Piccadilly": {
       "name": "Piccadilly Line",
-      "users": ["U04PY8GL4VD", "U01RFB2KGAK"],
+      "users": ["U04PY8GL4VD"],
       "description": "Piccadilly Line - Cockfosters to Heathrow/Uxbridge"
     },
     "District": {
