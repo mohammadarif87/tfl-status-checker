@@ -50,9 +50,25 @@ jobs:
           path: previous_disruptions.json
           key: ${{ runner.os }}-previous-disruptions
 
-      - name: Clear cache for specific runs
+      - name: Delete cache for specific runs
         if: github.event_name == 'schedule' && (github.event.schedule == '0 7 * * 1-5' || github.event.schedule == '0 16 * * 1-5')
         run: |
-          echo '[]' > previous_disruptions.json
-          echo "Cache cleared for ${{ github.event.schedule }} run"
+          echo "Installing GitHub CLI..."
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt update
+          sudo apt install gh
+
+          echo "Fetching cache key..."
+          CACHE_KEY="${{ runner.os }}-previous-disruptions"
+          echo "Deleting cache for key: $CACHE_KEY"
+          
+          # List and delete all caches matching our key
+          gh cache list --key "$CACHE_KEY" --json id --jq '.[].id' | while read -r cache_id; do
+            echo "Deleting cache ID: $cache_id"
+            gh cache delete "$cache_id"
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
 
