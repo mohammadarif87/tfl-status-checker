@@ -11,7 +11,7 @@
     },
     "Victoria": {
       "name": "Victoria Line",
-      "users": ["U04PY8GL4VD"],
+      "users": ["U04PY8GL4VD", "U055S61879P"],
       "description": "Victoria Line - Walthamstow Central to Brixton"
     },
     "Jubilee": {
@@ -20,12 +20,12 @@
     },
     "Northern": {
       "name": "Northern Line",
-      "users": ["U044MPN39DL", "U084LK27MJ9"],
+      "users": ["U044MPN39DL", "U084LK27MJ9", "U055S61879P"],
       "description": "Northern Line - Edgware/High Barnet to Morden"
     },
     "Piccadilly": {
       "name": "Piccadilly Line",
-      "users": ["U04PY8GL4VD"],
+      "users": ["U04PY8GL4VD", "U01RFB2KGAK"],
       "description": "Piccadilly Line - Cockfosters to Heathrow/Uxbridge"
     },
     "District": {

@@ -191,8 +191,7 @@ async function sendAlertWithScreenshot(isUpdate = false) {
       let userMentions = "";
       if (slackUsers.lines[line.lineName] && 
           slackUsers.lines[line.lineName].users && 
-          slackUsers.lines[line.lineName].users.length > 0 && 
-          slackUsers.lines[line.lineName].users[0] !== "") {
+          slackUsers.lines[line.lineName].users.length > 0) {
         userMentions = slackUsers.lines[line.lineName].users
           .filter(userId => userId && userId.trim() !== "")
           .map(userId => `<@${userId}>`)
