@@ -43,15 +43,28 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
 
+      - name: Check if we should delete cache
+        id: check-time
+        run: |
+          # Get current hour in UTC
+          HOUR=$(date -u +%H)
+          # Check if it's around 7:00 or 16:00 UTC (allowing for some delay)
+          if [ "$HOUR" = "07" ] || [ "$HOUR" = "16" ]; then
+            echo "should_delete=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_delete=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Save previous disruptions to cache
         uses: actions/cache/save@v3
-        if: always() && (github.event_name != 'schedule' || (github.event.schedule != '0 7 * * 1-5' && github.event.schedule != '0 16 * * 1-5'))
+        if: always() && steps.check-time.outputs.should_delete != 'true'
         with:
           path: previous_disruptions.json
           key: ${{ runner.os }}-previous-disruptions
+          upload-chunk-size: 32MB
 
       - name: Delete cache for specific runs
-        if: github.event_name == 'schedule' && (github.event.schedule == '0 7 * * 1-5' || github.event.schedule == '0 16 * * 1-5')
+        if: always() && steps.check-time.outputs.should_delete == 'true'
         run: |
           echo "Installing GitHub CLI..."
           curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
