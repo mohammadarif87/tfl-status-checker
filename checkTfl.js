@@ -284,27 +284,36 @@ async function sendAlertWithScreenshot(isUpdate = false) {
       text: isUpdate ? "*UPDATE: TfL Status Alert:*" : "*TfL Status Alert:*",
       attachments: [{ text: message }],
     });
-    
-    // Then upload the screenshot with proper filename
-    const response = await slackClient.files.uploadV2({
-      channel_id: SLACK_CHANNEL,
-      file: fs.createReadStream("disruptions.png"),
-      filename: "tfl-disruptions.png",
-      title: isUpdate ? "TfL Disruptions Update Screenshot" : "TfL Disruptions Screenshot",
-    });
-    
-    // Send a follow-up message with the screenshot
-    if (response && response.file) {
-      await slackClient.chat.postMessage({
-        channel: SLACK_CHANNEL,
-        text: isUpdate ? "*UPDATE: TfL Status Alert Screenshot:*" : "*TfL Status Alert Screenshot:*",
-        attachments: [{ 
-          text: message,
-          image_url: response.file.url_private 
-        }],
+
+    // Check if screenshot exists and is non-empty before uploading
+    const path = require('path');
+    const screenshotPath = 'disruptions.png';
+    console.log('Screenshot absolute path:', path.resolve(screenshotPath));
+    if (!fs.existsSync(screenshotPath) || fs.statSync(screenshotPath).size === 0) {
+      console.error('disruptions.png does not exist or is empty!');
+    } else {
+      console.log('disruptions.png exists and is non-empty.');
+      // Then upload the screenshot with proper filename
+      const response = await slackClient.files.uploadV2({
+        channel_id: SLACK_CHANNEL,
+        file: fs.createReadStream(screenshotPath),
+        filename: 'tfl-disruptions.png',
+        title: isUpdate ? 'TfL Disruptions Update Screenshot' : 'TfL Disruptions Screenshot',
       });
+      console.log('Slack upload response:', response);
+      // Send a follow-up message with the screenshot
+      if (response && response.file) {
+        await slackClient.chat.postMessage({
+          channel: SLACK_CHANNEL,
+          text: isUpdate ? "*UPDATE: TfL Status Alert Screenshot:*" : "*TfL Status Alert Screenshot:*",
+          attachments: [{ 
+            text: message,
+            image_url: response.file.url_private 
+          }],
+        });
+      }
     }
-    
+
     console.log(`Disruption details and screenshot sent to Slack${isUpdate ? " (UPDATE)" : ""}`);
   } catch (error) {
     console.error("Failed to send alert:", error);
