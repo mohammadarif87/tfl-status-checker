@@ -47,45 +47,116 @@ async function checkStatus() {
   // Wait to ensure the page is fully rendered without the cookie policy
   await new Promise(resolve => setTimeout(resolve, 2000));
 
-  // Wait for disruptions list
-  await page.waitForSelector(".disruptions-list");
-  
-  // Extract disrupted lines
-  const disruptedLines = await page.evaluate(async () => {
-    const lines = [];
-    const accordions = document.querySelectorAll(".disruptions-list [data-testid='headles-accordion-root-testid']");
-    
-    for (const item of accordions) {
-      const lineName = item.querySelector("[data-testid='accordion-name']")?.innerText.trim();
-      const status = item.querySelector("[data-testid='line-status']")?.innerText.trim();
+  // Try to find the disruptions list using both possible selectors
+  let disruptedLines = [];
+  let newLayout;
+  try {
+    // First try the new layout
+    console.log("Attempting to find new layout...");
+    await page.waitForSelector(".disruptions-list", { timeout: 5000 });
+    newLayout = true;
+    console.log("Found new layout");
+    disruptedLines = await page.evaluate(async () => {
+      const lines = [];
+      const accordions = document.querySelectorAll(".disruptions-list [data-testid='headles-accordion-root-testid']");
+      console.log(`Found ${accordions.length} accordions in new layout`);
       
-      if (lineName && status) {
-        // Click the arrow to expand the details
-        const trigger = item.querySelector(".CustomAccordion_triggerWrapper__kvoYn");
-        if (trigger) {
-          trigger.click();
-          // Wait for the content to load
-          await new Promise(resolve => setTimeout(resolve, 1000));
+      for (const item of accordions) {
+        const lineName = item.querySelector("[data-testid='accordion-name']")?.innerText.trim();
+        const status = item.querySelector("[data-testid='line-status']")?.innerText.trim();
+        
+        if (lineName && status) {
+          // Click the arrow to expand the details
+          const trigger = item.querySelector(".CustomAccordion_triggerWrapper__kvoYn");
+          if (trigger) {
+            trigger.click();
+            // Wait for the content to load
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          
+          // Get the details from the panel
+          const details = item.querySelector(".CustomAccordion_panel__vp6GJ")?.innerText.trim();
+          
+          lines.push({
+            lineName,
+            status,
+            details: details || "No additional details available"
+          });
         }
-        
-        // Get the details from the panel
-        const details = item.querySelector(".CustomAccordion_panel__vp6GJ")?.innerText.trim();
-        
-        lines.push({
-          lineName,
-          status,
-          details: details || "No additional details available"
-        });
       }
+      return Array.from(new Map(lines.map(line => [line.lineName, line])).values());
+    });
+  } catch (error) {
+    console.log("New layout not found, trying old layout = Error:", error.message);
+    // If new layout fails, try the old layout
+    try {
+      console.log("Attempting to find old layout...");
+      await page.waitForSelector("#rainbow-list-tube-dlr-overground-elizabeth-line-tram ul.rainbow-list > li.rainbow-list-item", { timeout: 5000 });
+      newLayout = false;
+      console.log("Found old layout");
+      // Take screenshot of collapsed list before expanding any lines
+      const section = await page.$("#rainbow-list-tube-dlr-overground-elizabeth-line-tram > ul");
+      if (section) {
+        await section.screenshot({ path: "disruptions.png" });
+        console.log("Screenshot saved: disruptions.png");
+      } else {
+        await page.screenshot({ path: "disruptions.png" });
+        console.log("Section not found, saved full page screenshot as disruptions.png");
+      }
+      // Extract details for each line by expanding one at a time (only for expandable lines)
+      disruptedLines = [];
+      const lineSelectors = await page.$$eval(
+        "#rainbow-list-tube-dlr-overground-elizabeth-line-tram ul.rainbow-list > li.rainbow-list-item",
+        items => items
+          .map((item, idx) => {
+            const btn = item.querySelector('.rainbow-list-link[role=button]');
+            return btn ? `#rainbow-list-tube-dlr-overground-elizabeth-line-tram ul.rainbow-list > li.rainbow-list-item:nth-child(${idx + 1}) .rainbow-list-link[role=button]` : null;
+          })
+          .filter(Boolean)
+      );
+      for (const selector of lineSelectors) {
+        // Expand the line
+        await page.click(selector);
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait for content to load
+        // Extract details for this line
+        const lineData = await page.evaluate(sel => {
+          const item = document.querySelector(sel)?.closest("li.rainbow-list-item");
+          if (!item) return null;
+          const lineName = item.querySelector(".service-name > span")?.innerText.trim();
+          const status = item.querySelector(".disruption-summary > span")?.innerText.trim();
+          let details = status;
+          const expanded = item.querySelector(".rainbow-list-content[aria-labelledby]");
+          if (expanded && expanded.offsetParent !== null) {
+            const detailP = expanded.querySelector(".section p");
+            if (detailP) details = detailP.innerText.trim();
+          }
+          if (lineName && status) {
+            return { lineName, status, details: details || "No additional details available" };
+          }
+          return null;
+        }, selector);
+        if (lineData) disruptedLines.push(lineData);
+        // Collapse the line (by clicking again)
+        await page.click(selector);
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      // No need to reload the page for screenshot anymore
+      await page.waitForSelector("#rainbow-list-tube-dlr-overground-elizabeth-line-tram ul.rainbow-list > li.rainbow-list-item", { timeout: 5000 });
+    } catch (error) {
+      console.error("Failed to find either layout. Error:", error.message);
+      await page.screenshot({ path: "error-layout.png" });
+      console.log("Saved error screenshot as error-layout.png");
+      throw new Error("Could not find disruptions list in either layout");
     }
-    
-    // Use a Map to remove duplicates (keys are line names)
-    return Array.from(new Map(lines.map(line => [line.lineName, line])).values());
-  });  
+  }
+  
+  console.log(`Found ${disruptedLines.length} total disrupted lines`);
   
   const affectedLines = disruptedLines.filter(line => 
     !["Good service", "Information", "Closure"].includes(line.status)
   );
+  
+  console.log(`Found ${affectedLines.length} affected lines after filtering`);
   
   if (affectedLines.length === 0) {
     console.log("No major disruptions.");
@@ -96,16 +167,19 @@ async function checkStatus() {
     return;
   }
   
-  // Screenshot the disrupted section
-  //const disruptionSection = await page.$("#tfl-status-tube-content");
-  const disruptionSection = await page.$("#tfl-status-tube");
-  //const disruptionSection = await page.$(".disruptions-list");
-  if (disruptionSection) {
-    //await page.evaluate(el => el.scrollIntoView(), disruptionSection);  // Ensure visibility
-    await disruptionSection.screenshot({ path: "disruptions.png" });
+  // Take screenshot of the correct element
+  let screenshotTarget = newLayout
+    ? "#tfl-status-tube"
+    : "#rainbow-list-tube-dlr-overground-elizabeth-line-tram > ul";
+  const section = await page.$(screenshotTarget);
+  if (section) {
+    await section.screenshot({ path: "disruptions.png" });
     console.log("Screenshot saved: disruptions.png");
+  } else {
+    // fallback to full page screenshot if section not found
+    await page.screenshot({ path: "disruptions.png" });
+    console.log("Section not found, saved full page screenshot as disruptions.png");
   }
-
   
   // Save JSON data
   fs.writeFileSync("disruptions.json", JSON.stringify(affectedLines, null, 2));
@@ -210,27 +284,36 @@ async function sendAlertWithScreenshot(isUpdate = false) {
       text: isUpdate ? "*UPDATE: TfL Status Alert:*" : "*TfL Status Alert:*",
       attachments: [{ text: message }],
     });
-    
-    // Then upload the screenshot with proper filename
-    const response = await slackClient.files.uploadV2({
-      channel_id: SLACK_CHANNEL,
-      file: fs.createReadStream("disruptions.png"),
-      filename: "tfl-disruptions.png",
-      title: isUpdate ? "TfL Disruptions Update Screenshot" : "TfL Disruptions Screenshot",
-    });
-    
-    // Send a follow-up message with the screenshot
-    if (response && response.file) {
-      await slackClient.chat.postMessage({
-        channel: SLACK_CHANNEL,
-        text: isUpdate ? "*UPDATE: TfL Status Alert Screenshot:*" : "*TfL Status Alert Screenshot:*",
-        attachments: [{ 
-          text: message,
-          image_url: response.file.url_private 
-        }],
+
+    // Check if screenshot exists and is non-empty before uploading
+    const path = require('path');
+    const screenshotPath = 'disruptions.png';
+    console.log('Screenshot absolute path:', path.resolve(screenshotPath));
+    if (!fs.existsSync(screenshotPath) || fs.statSync(screenshotPath).size === 0) {
+      console.error('disruptions.png does not exist or is empty!');
+    } else {
+      console.log('disruptions.png exists and is non-empty.');
+      // Then upload the screenshot with proper filename
+      const response = await slackClient.files.uploadV2({
+        channel_id: SLACK_CHANNEL,
+        file: fs.createReadStream(screenshotPath),
+        filename: 'tfl-disruptions.png',
+        title: isUpdate ? 'TfL Disruptions Update Screenshot' : 'TfL Disruptions Screenshot',
       });
+      console.log('Slack upload response:', response);
+      // Send a follow-up message with the screenshot
+      if (response && response.file) {
+        await slackClient.chat.postMessage({
+          channel: SLACK_CHANNEL,
+          text: isUpdate ? "*UPDATE: TfL Status Alert Screenshot:*" : "*TfL Status Alert Screenshot:*",
+          attachments: [{ 
+            text: message,
+            image_url: response.file.url_private 
+          }],
+        });
+      }
     }
-    
+
     console.log(`Disruption details and screenshot sent to Slack${isUpdate ? " (UPDATE)" : ""}`);
   } catch (error) {
     console.error("Failed to send alert:", error);
