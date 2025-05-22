@@ -20,7 +20,7 @@
     },
     "Northern": {
       "name": "Northern Line",
-      "users": ["U044MPN39DL", "U084LK27MJ9", "U055S61879P"],
+      "users": ["U044MPN39DL", "U084LK27MJ9", "U055S61879P", "U078L4XBX1T"],
       "description": "Northern Line - Edgware/High Barnet to Morden"
     },
     "Piccadilly": {
@@ -52,6 +52,7 @@
     },
     "DLR": {
       "name": "Docklands Light Railway",
+      "users": ["U078L4XBX1T"],
       "description": "Docklands Light Railway - Bank/Lewisham to Woolwich Arsenal/Stratford International"
     },
     "London Overground": {
@@ -61,7 +62,7 @@
     },
     "Elizabeth line": {
       "name": "Elizabeth Line",
-      "users": ["U01RFB2KGAK", "U05QM7RGBF0", "U01RPAVMZUN", "U02CGP1SLRK", "U011A22FAJH", "U08FHMD505B"],
+      "users": ["U01RFB2KGAK", "U05QM7RGBF0", "U01RPAVMZUN", "U02CGP1SLRK", "U011A22FAJH", "U08FHMD505B", "U078L4XBX1T", "U0822NDKG74"],
       "description": "Elizabeth Line - Reading/Heathrow to Shenfield/Abbey Wood"
     },
     "Tram": {

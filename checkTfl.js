@@ -195,6 +195,7 @@ async function checkStatus() {
     await sendAlertWithScreenshot(hasChanges === "update");
   } else {
     console.log("No changes in disruptions since last check. Skipping Slack notification.");
+    // Optionally, you can send a log or a minimal notification here if needed
   }
   
   // Save current disruptions as previous for next comparison
