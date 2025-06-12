@@ -53,7 +53,7 @@ async function checkStatus() {
   try {
     // First try the new layout
     console.log("Attempting to find new layout...");
-    await page.waitForSelector(".disruptions-list", { timeout: 5000 });
+    await page.waitForSelector(".disruptions-list", { timeout: 20000 });
     newLayout = true;
     console.log("Found new layout");
     disruptedLines = await page.evaluate(async () => {
