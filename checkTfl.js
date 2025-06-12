@@ -45,53 +45,73 @@ async function checkStatus() {
   console.log("Page Refreshed");
 
   // Wait to ensure the page is fully rendered without the cookie policy
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  await new Promise(resolve => setTimeout(resolve, 5000));
 
+  // Debug: Log the page content to see what's actually loaded
+  const pageContent = await page.content();
+  console.log("Page content length:", pageContent.length);
+  
   // Try to find the disruptions list using both possible selectors
   let disruptedLines = [];
   let newLayout;
   try {
     // First try the new layout
     console.log("Attempting to find new layout...");
-    await page.waitForSelector(".disruptions-list", { timeout: 20000 });
-    newLayout = true;
-    console.log("Found new layout");
-    disruptedLines = await page.evaluate(async () => {
-      const lines = [];
-      const accordions = document.querySelectorAll(".disruptions-list [data-testid='headles-accordion-root-testid']");
-      console.log(`Found ${accordions.length} accordions in new layout`);
-      
-      for (const item of accordions) {
-        const lineName = item.querySelector("[data-testid='accordion-name']")?.innerText.trim();
-        const status = item.querySelector("[data-testid='line-status']")?.innerText.trim();
+    
+    // Wait for any of these elements to appear
+    await Promise.race([
+      page.waitForSelector(".disruptions-list", { timeout: 20000 }),
+      page.waitForSelector("#tfl-status-tube", { timeout: 20000 }),
+      page.waitForSelector("#rainbow-list-tube-dlr-overground-elizabeth-line-tram", { timeout: 20000 })
+    ]);
+    
+    // Additional wait to ensure dynamic content is loaded
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Check which layout we found
+    const newLayoutElement = await page.$(".disruptions-list");
+    if (newLayoutElement) {
+      newLayout = true;
+      console.log("Found new layout");
+      disruptedLines = await page.evaluate(async () => {
+        const lines = [];
+        const accordions = document.querySelectorAll(".disruptions-list [data-testid='headles-accordion-root-testid']");
+        console.log(`Found ${accordions.length} accordions in new layout`);
         
-        if (lineName && status) {
-          // Click the arrow to expand the details
-          const trigger = item.querySelector(".CustomAccordion_triggerWrapper__kvoYn");
-          if (trigger) {
-            trigger.click();
-            // Wait for the content to load
-            await new Promise(resolve => setTimeout(resolve, 1000));
+        for (const item of accordions) {
+          const lineName = item.querySelector("[data-testid='accordion-name']")?.innerText.trim();
+          const status = item.querySelector("[data-testid='line-status']")?.innerText.trim();
+          
+          if (lineName && status) {
+            // Click the arrow to expand the details
+            const trigger = item.querySelector(".CustomAccordion_triggerWrapper__kvoYn");
+            if (trigger) {
+              trigger.click();
+              // Wait for the content to load
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            // Get the details from the panel
+            const details = item.querySelector(".CustomAccordion_panel__vp6GJ")?.innerText.trim();
+            
+            lines.push({
+              lineName,
+              status,
+              details: details || "No additional details available"
+            });
           }
-          
-          // Get the details from the panel
-          const details = item.querySelector(".CustomAccordion_panel__vp6GJ")?.innerText.trim();
-          
-          lines.push({
-            lineName,
-            status,
-            details: details || "No additional details available"
-          });
         }
-      }
-      return Array.from(new Map(lines.map(line => [line.lineName, line])).values());
-    });
+        return Array.from(new Map(lines.map(line => [line.lineName, line])).values());
+      });
+    } else {
+      throw new Error("New layout element not found after waiting");
+    }
   } catch (error) {
     console.log("New layout not found, trying old layout = Error:", error.message);
     // If new layout fails, try the old layout
     try {
       console.log("Attempting to find old layout...");
-      await page.waitForSelector("#rainbow-list-tube-dlr-overground-elizabeth-line-tram ul.rainbow-list > li.rainbow-list-item", { timeout: 5000 });
+      await page.waitForSelector("#rainbow-list-tube-dlr-overground-elizabeth-line-tram ul.rainbow-list > li.rainbow-list-item", { timeout: 20000 });
       newLayout = false;
       console.log("Found old layout");
       // Take screenshot of collapsed list before expanding any lines
