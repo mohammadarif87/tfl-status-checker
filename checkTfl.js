@@ -9,7 +9,15 @@ const PREVIOUS_DISRUPTIONS_FILE = "previous_disruptions.json";
 async function checkStatus() {
   const browser = await puppeteer.launch({
     headless: "new",
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--single-process"],
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--single-process",
+      "--disable-web-security",
+      "--disable-features=IsolateOrigins,site-per-process"
+    ],
   });
   
   const page = await browser.newPage();
@@ -17,14 +25,39 @@ async function checkStatus() {
   // Set a longer default timeout for all operations
   page.setDefaultNavigationTimeout(60000);
   page.setDefaultTimeout(60000);
+
+  // Set viewport to a larger size
+  await page.setViewport({ width: 1920, height: 1080 });
+  
+  // Enable request interception to monitor network activity
+  await page.setRequestInterception(true);
+  let pendingRequests = 0;
+  
+  page.on('request', request => {
+    pendingRequests++;
+    request.continue();
+  });
+  
+  page.on('response', response => {
+    pendingRequests--;
+  });
   
   // Navigate to the page with increased timeout
+  console.log("Navigating to TfL status page...");
   await page.goto(TFL_URL, { 
-    waitUntil: "networkidle2",
+    waitUntil: "networkidle0",
     timeout: 60000
   });
   
+  // Wait for network to be idle
+  console.log("Waiting for network to be idle...");
+  await page.waitForFunction(() => {
+    return window.performance.getEntriesByType('resource')
+      .every(resource => resource.responseEnd > 0);
+  }, { timeout: 60000 });
+  
   // Wait an additional 5 seconds to ensure the page is fully loaded
+  console.log("Additional wait for page stability...");
   await new Promise(resolve => setTimeout(resolve, 5000));
   
   // Accept Cookies if present
@@ -41,15 +74,21 @@ async function checkStatus() {
   await new Promise(resolve => setTimeout(resolve, 2000));
 
   // Refresh the page without any gradient overlay from the cookie policy
-  await page.reload();
+  console.log("Refreshing page...");
+  await page.reload({ waitUntil: "networkidle0" });
   console.log("Page Refreshed");
 
   // Wait to ensure the page is fully rendered without the cookie policy
+  console.log("Waiting for page stability after refresh...");
   await new Promise(resolve => setTimeout(resolve, 5000));
 
   // Debug: Log the page content to see what's actually loaded
   const pageContent = await page.content();
   console.log("Page content length:", pageContent.length);
+  
+  // Take a screenshot of the current state
+  await page.screenshot({ path: "before-layout-check.png" });
+  console.log("Saved initial state screenshot as before-layout-check.png");
   
   // Try to find the disruptions list using both possible selectors
   let disruptedLines = [];
@@ -60,9 +99,9 @@ async function checkStatus() {
     
     // Wait for any of these elements to appear
     await Promise.race([
-      page.waitForSelector(".disruptions-list", { timeout: 20000 }),
-      page.waitForSelector("#tfl-status-tube", { timeout: 20000 }),
-      page.waitForSelector("#rainbow-list-tube-dlr-overground-elizabeth-line-tram", { timeout: 20000 })
+      page.waitForSelector(".disruptions-list", { timeout: 20000, visible: true }),
+      page.waitForSelector("#tfl-status-tube", { timeout: 20000, visible: true }),
+      page.waitForSelector("#rainbow-list-tube-dlr-overground-elizabeth-line-tram", { timeout: 20000, visible: true })
     ]);
     
     // Additional wait to ensure dynamic content is loaded
