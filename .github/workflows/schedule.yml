@@ -45,6 +45,17 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
 
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: tfl-screenshots
+          path: |
+            before-layout-check.png
+            disruptions.png
+            error-layout.png
+          retention-days: 7
+
       - name: Check if we should delete cache
         id: check-time
         run: |
