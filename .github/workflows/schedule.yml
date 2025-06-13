@@ -39,22 +39,10 @@ jobs:
         run: npm install
 
       - name: Run script
-        run: node checkTfl.js
+        run: node checkTflApi.js
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
-
-      - name: Upload screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfl-screenshots
-          path: |
-            before-layout-check.png
-            disruptions.png
-            error-layout.png
-          retention-days: 7
 
       - name: Check if we should delete cache
         id: check-time
