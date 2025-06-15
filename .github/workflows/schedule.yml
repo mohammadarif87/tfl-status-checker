@@ -41,8 +41,8 @@ jobs:
       - name: Run script
         run: node checkTflApi.js
         env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+          SLACK_BOT_TFL_TOKEN: ${{ secrets.SLACK_BOT_TFL_TOKEN }}
+          SLACK_CHANNEL_TFL: ${{ secrets.SLACK_CHANNEL_TFL }}
 
       - name: Check if we should delete cache
         id: check-time
