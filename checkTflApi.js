@@ -4,63 +4,57 @@ const path = require('path');
 const { WebClient } = require('@slack/web-api');
 require('dotenv').config();
 
-const SLACK_BOT_TFL_TOKEN = process.env.SLACK_BOT_TFL_TOKEN ? process.env.SLACK_BOT_TFL_TOKEN.trim() : undefined;
-const SLACK_CHANNEL_TFL = process.env.SLACK_CHANNEL_TFL ? process.env.SLACK_CHANNEL_TFL.trim() : undefined;
+const SLACK_BOT_TFL_TOKEN = process.env.SLACK_BOT_TFL_TOKEN
+const SLACK_CHANNEL_TFL = process.env.SLACK_CHANNEL_TFL
 
 const CURRENT_DISRUPTIONS_FILE = "disruptions.json";
 const PREVIOUS_DISRUPTIONS_FILE = "previous_disruptions.json";
 const SLACK_USERS_FILE = "slackUsers.json";
 
-// --- Debugging Start ---
-console.log("SLACK_BOT_TFL_TOKEN from process.env (full, for debug only):", process.env.SLACK_BOT_TFL_TOKEN);
-console.log("SLACK_BOT_TFL_TOKEN (trimmed, first 5 chars):", SLACK_BOT_TFL_TOKEN ? SLACK_BOT_TFL_TOKEN.substring(0, 5) : "Not set");
-console.log("SLACK_CHANNEL_TFL (trimmed):", SLACK_CHANNEL_TFL || "Not set");
-// --- Debugging End ---
-
 const slackClient = new WebClient(SLACK_BOT_TFL_TOKEN);
 
 const LINE_EMOJIS = {
-  bakerloo: '🟤',
-  central: '🔴',
-  circle: '🟡',
-  district: '🟢',
-  'hammersmith-city': '🟣',
-  jubilee: '⚫',
-  metropolitan: '🟪',
-  northern: '⬛',
-  piccadilly: '🔵',
-  victoria: '🔷',
-  'waterloo-city': '⚪',
-  dlr: '🚟',
-  elizabeth: '🟪',
-  liberty: '🟠',
-  lioness: '🟠',
-  mildmay: '🟠',
-  suffragette: '🟠',
-  weaver: '🟠',
-  windrush: '🟠',
+  bakerloo: ':bakerloo:',
+  central: ':central:',
+  circle: ':circle:',
+  district: ':district:',
+  'hammersmith-city': ':hammersmith-city:',
+  jubilee: ':jubilee:',
+  metropolitan: ':metropolitan:',
+  northern: ':northern:',
+  piccadilly: ':piccadilly:',
+  victoria: ':victoria:',
+  'waterloo-city': ':waterloo-city:',
+  dlr: ':dlr:',
+  elizabeth: ':elizabeth:',
+  liberty: ':overground:',
+  lioness: ':overground:',
+  mildmay: ':overground:',
+  suffragette: ':overground:',
+  weaver: ':overground:',
+  windrush: ':overground:',
 };
 
 const LINE_COLORS = {
-  bakerloo: '#B36305',
-  central: '#E41D2D',
-  circle: '#FFD300',
-  district: '#00772D',
-  'hammersmith-city': '#F3A9BB',
+  bakerloo: '#B26300',
+  central: '#DC241F',
+  circle: '#FFD329',
+  district: '#007229',
+  'hammersmith-city': '#F4A9BE',
   jubilee: '#A1A5A7',
-  metropolitan: '#79178E',
+  metropolitan: '9B0058',
   northern: '#000000',
-  piccadilly: '#00108A',
+  piccadilly: '#0019A8',
   victoria: '#00A0E2',
-  'waterloo-city': '#93CEB5',
+  'waterloo-city': '#93CEBA',
   dlr: '#00A4A7',
-  elizabeth: '#6A22B3',
-  liberty: '#FF8C00', // Overground orange
-  lioness: '#FF8C00', // Overground orange
-  mildmay: '#FF8C00', // Overground orange
-  suffragette: '#FF8C00', // Overground orange
-  weaver: '#FF8C00', // Overground orange
-  windrush: '#FF8C00', // Overground orange
+  elizabeth: '#7156A5',
+  liberty: '#EE7d11', // Overground orange
+  lioness: '#EE7d11', // Overground orange
+  mildmay: '#EE7d11', // Overground orange
+  suffragette: '#EE7d11', // Overground orange
+  weaver: '#EE7d11', // Overground orange
+  windrush: '#EE7d11', // Overground orange
 };
 
 function getTubeLines() {
