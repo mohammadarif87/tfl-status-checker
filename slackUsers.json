@@ -67,32 +67,26 @@
     },
     "liberty": {
       "name": "London Overground",
-      "users": ["U04PY8GL4VD"],
       "description": "London Overground - Various routes across London"
     },
     "lioness": {
       "name": "London Overground",
-      "users": ["U04PY8GL4VD"],
       "description": "London Overground - Various routes across London"
     },
     "mildmay": {
       "name": "London Overground",
-      "users": ["U04PY8GL4VD"],
       "description": "London Overground - Various routes across London"
     },
     "suffragette": {
       "name": "London Overground",
-      "users": ["U04PY8GL4VD"],
       "description": "London Overground - Various routes across London"
     },
     "weaver": {
       "name": "London Overground",
-      "users": ["U04PY8GL4VD"],
       "description": "London Overground - Various routes across London"
     },
     "windrush": {
       "name": "London Overground",
-      "users": ["U04PY8GL4VD"],
       "description": "London Overground - Various routes across London"
     }
   }
