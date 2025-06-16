@@ -42,7 +42,7 @@
     },
     "northern": {
       "name": "Northern Line",
-      "users": ["U044MPN39DL", "U084LK27MJ9", "U055S61879P", "U078L4XBX1T"],
+      "users": ["U044MPN39DL", "U084LK27MJ9", "U055S61879P", "U078L4XBX1T", "U03EL5FG90S"],
       "description": "Northern Line - Edgware/High Barnet to Morden"
     },
     "piccadilly": {
