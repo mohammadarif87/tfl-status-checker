@@ -6,7 +6,7 @@
     },
     "central": {
       "name": "Central Line",
-      "users": ["U04UGGEREKZ"],
+      "users": ["U04UGGEREKZ", "U081CH95NCU"],
       "description": "Central Line - Ealing Broadway/West Ruislip to Epping/Hainault"
     },
     "circle": {
@@ -24,7 +24,7 @@
     },
     "elizabeth": {
       "name": "Elizabeth Line",
-      "users": ["U01RFB2KGAK", "U05QM7RGBF0", "U01RPAVMZUN", "U02CGP1SLRK", "U011A22FAJH", "U08FHMD505B", "U078L4XBX1T", "U0822NDKG74"],
+      "users": ["U01RFB2KGAK", "U05QM7RGBF0", "U01RPAVMZUN", "U02CGP1SLRK", "U011A22FAJH", "U08FHMD505B", "U078L4XBX1T", "U0822NDKG74", "U081CH95NCU"],
       "description": "Elizabeth Line - Reading/Heathrow to Shenfield/Abbey Wood"
     },
     "hammersmith-city": {
