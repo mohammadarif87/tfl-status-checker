@@ -8,7 +8,7 @@ on:
     - cron: '00 8 * * 1-5'  # Runs at 09:00 AM (Monday to Friday)
     - cron: '30 15 * * 1-5' # Runs at 04:30 PM (Monday to Friday)
     - cron: '00 16 * * 1-5' # Runs at 05:00 PM (Monday to Friday)
-    - cron: '00 17 * * 1-5' # Runs at 06:00 PM (Monday to Friday)
+    - cron: '30 16 * * 1-5' # Runs at 05:30 PM (Monday to Friday)
 
 jobs:
   check-status:
