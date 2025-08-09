@@ -47,10 +47,13 @@ jobs:
       - name: Check if we should delete cache
         id: check-time
         run: |
-          # Get current hour in UTC
+          # Get current hour and minute in UTC
           HOUR=$(date -u +%H)
-          # Check if it's around 7:00 or 16:00 UTC (allowing for some delay)
-          if [ "$HOUR" = "07" ] || [ "$HOUR" = "16" ]; then
+          MINUTE=$(date -u +%M)
+          # Check if it's the 3rd run (8:00) or 6th run (16:30)
+          # 3rd run: 8:00 UTC (allowing for some delay)
+          # 6th run: 16:30 UTC (allowing for some delay)
+          if [ "$HOUR" = "08" ] || ([ "$HOUR" = "16" ] && [ "$MINUTE" -ge "30" ]); then
             echo "should_delete=true" >> $GITHUB_OUTPUT
           else
             echo "should_delete=false" >> $GITHUB_OUTPUT
