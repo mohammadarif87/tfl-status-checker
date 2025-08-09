@@ -6,7 +6,6 @@
     },
     "central": {
       "name": "Central Line",
-      "users": ["U04UGGEREKZ", "U081CH95NCU"],
       "description": "Central Line - Ealing Broadway/West Ruislip to Epping/Hainault"
     },
     "circle": {
@@ -19,17 +18,14 @@
     },
     "dlr": {
       "name": "Docklands Light Railway",
-      "users": ["U078L4XBX1T"],
       "description": "Docklands Light Railway - Bank/Lewisham to Woolwich Arsenal/Stratford International"
     },
     "elizabeth": {
       "name": "Elizabeth Line",
-      "users": ["U01RFB2KGAK", "U05QM7RGBF0", "U01RPAVMZUN", "U02CGP1SLRK", "U011A22FAJH", "U08FHMD505B", "U078L4XBX1T", "U0822NDKG74", "U081CH95NCU"],
       "description": "Elizabeth Line - Reading/Heathrow to Shenfield/Abbey Wood"
     },
     "hammersmith-city": {
       "name": "Hammersmith & City Line",
-      "users": ["U04UGGEREKZ"],
       "description": "Hammersmith & City Line - Hammersmith to Barking"
     },
     "jubilee": {
@@ -38,17 +34,14 @@
     },
     "metropolitan": {
       "name": "Metropolitan Line",
-      "users": ["U05C37PA0B0"],
       "description": "Metropolitan Line - Amersham/Chesham/Watford to Aldgate"
     },
     "northern": {
       "name": "Northern Line",
-      "users": ["U044MPN39DL", "U084LK27MJ9", "U055S61879P", "U078L4XBX1T", "U03EL5FG90S", "U05C37PA0B0", "U3AFYS6JF", "U08LU9C8S94"],
       "description": "Northern Line - Edgware/High Barnet to Morden"
     },
     "piccadilly": {
       "name": "Piccadilly Line",
-      "users": ["U04PY8GL4VD"],
       "description": "Piccadilly Line - Cockfosters to Heathrow/Uxbridge"
     },
     "tram": {
@@ -57,12 +50,10 @@
     },
     "victoria": {
       "name": "Victoria Line",
-      "users": ["U04PY8GL4VD", "U055S61879P"],
       "description": "Victoria Line - Walthamstow Central to Brixton"
     },
     "waterloo-city": {
       "name": "Waterloo & City Line",
-      "users": ["U084LK27MJ9"],
       "description": "Waterloo & City Line - Waterloo to Bank"
     },
     "liberty": {
