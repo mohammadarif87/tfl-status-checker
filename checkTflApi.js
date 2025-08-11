@@ -10,16 +10,8 @@ const SLACK_CHANNEL_TFL = process.env.SLACK_CHANNEL_TFL
 const CURRENT_DISRUPTIONS_FILE = "disruptions.json";
 const PREVIOUS_DISRUPTIONS_FILE = "previous_disruptions.json";
 const SLACK_USERS_FILE = "slackUsers.json";
-
-// Schedule times in UTC (24-hour format)
-const SCHEDULE_TIMES = [
-  { hour: 6, minute: 30, isFirstRun: true },   // 1st run - 06:30
-  { hour: 7, minute: 0, isFirstRun: false },   // 2nd run - 07:00
-  { hour: 8, minute: 0, isFirstRun: false },   // 3rd run - 08:00
-  { hour: 15, minute: 30, isFirstRun: true },  // 4th run - 15:30 (evening first)
-  { hour: 16, minute: 0, isFirstRun: false },  // 5th run - 16:00
-  { hour: 16, minute: 30, isFirstRun: false }  // 6th run - 16:30
-];
+// From workflow; 1 means first run of the block (morning or evening)
+const RUN_SLOT = Number(process.env.RUN_SLOT || '1');
 
 const slackClient = new WebClient(SLACK_BOT_TFL_TOKEN);
 
@@ -52,7 +44,7 @@ const LINE_COLORS = {
   district: '#007229',
   'hammersmith-city': '#F4A9BE',
   jubilee: '#A1A5A7',
-  metropolitan: '9B0058',
+  metropolitan: '#9B0058',
   northern: '#000000',
   piccadilly: '#0019A8',
   victoria: '#00A0E2',
@@ -73,36 +65,64 @@ function getTubeLines() {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
-function getCurrentRunType() {
-  const now = new Date();
-  const currentHour = now.getUTCHours();
-  const currentMinute = now.getUTCMinutes();
-  
-  // Find the closest matching schedule time (within 30 minutes)
-  for (const schedule of SCHEDULE_TIMES) {
-    const scheduleTime = schedule.hour * 60 + schedule.minute;
-    const currentTime = currentHour * 60 + currentMinute;
-    
-    // Allow for up to 30 minutes after the scheduled time
-    if (currentTime >= scheduleTime && currentTime <= scheduleTime + 30) {
-      return {
-        isFirstRun: schedule.isFirstRun,
-        runNumber: SCHEDULE_TIMES.indexOf(schedule) + 1,
-        scheduleTime: `${schedule.hour.toString().padStart(2, '0')}:${schedule.minute.toString().padStart(2, '0')}`
-      };
-    }
+function normalizeDetailsText(text) {
+  if (!text) return '';
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, ' ') // collapse whitespace
+    .replace(/\s*\|\s*/g, ' | ') // standardize separator spacing
+    .trim();
+}
+
+function getCurrentBlock() {
+  const hour = new Date().getUTCHours();
+  return hour < 12 ? 'morning' : 'evening';
+}
+
+function loadPreviousState() {
+  if (!fs.existsSync(PREVIOUS_DISRUPTIONS_FILE)) {
+    return { disruptions: [], metadata: null };
   }
-  
-  // Default to first run if no match found (for manual runs)
-  return { isFirstRun: true, runNumber: 1, scheduleTime: 'manual' };
+  try {
+    const raw = fs.readFileSync(PREVIOUS_DISRUPTIONS_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return { disruptions: parsed, metadata: null };
+    }
+    if (parsed && Array.isArray(parsed.disruptions)) {
+      return { disruptions: parsed.disruptions, metadata: parsed.metadata || null };
+    }
+    return { disruptions: [], metadata: null };
+  } catch (_e) {
+    return { disruptions: [], metadata: null };
+  }
+}
+
+function saveCurrentState(disruptions) {
+  const state = {
+    metadata: {
+      date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+      block: getCurrentBlock(),
+      slot: RUN_SLOT
+    },
+    disruptions
+  };
+  fs.writeFileSync(CURRENT_DISRUPTIONS_FILE, JSON.stringify(disruptions, null, 2));
+  fs.writeFileSync(PREVIOUS_DISRUPTIONS_FILE, JSON.stringify(state, null, 2));
 }
 
 async function getDisruption(lineId) {
   const { data } = await axios.get(`https://api.tfl.gov.uk/Line/${lineId}/Disruption`);
   console.log("Checking disruption endpoint for", lineId);
   if (!data.length) return null;
-  // If there are multiple disruptions, get unique descriptions and join them.
-  const uniqueDescriptions = Array.from(new Set(data.map(d => d.description)));
+  // If there are multiple disruptions, dedupe, trim and sort for stable ordering
+  const uniqueDescriptions = Array.from(new Set(
+    data
+      .map(d => (d && d.description ? String(d.description) : ''))
+      .map(s => s.trim())
+      .filter(Boolean)
+  ));
+  uniqueDescriptions.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   return uniqueDescriptions.join(' | ');
 }
 
@@ -125,7 +145,9 @@ function findDisruptionChanges(currentDisruptions, previousDisruptions) {
       changes.newLines.push(currentLine);
     } else {
       const previousLine = previousMap.get(lineId);
-      if (currentLine.details !== previousLine.details) {
+      const currNorm = normalizeDetailsText(currentLine.details);
+      const prevNorm = normalizeDetailsText(previousLine.details);
+      if (currNorm !== prevNorm) {
         changes.updatedLines.push(currentLine);
       } else {
         changes.unchangedLines.push(currentLine);
@@ -149,9 +171,8 @@ async function main() {
       console.error("Slack bot token or channel is not set. Please check your .env file.");
       return;
     }
-
-    const runInfo = getCurrentRunType();
-    console.log(`Current run: ${runInfo.runNumber} (${runInfo.scheduleTime}) - First run: ${runInfo.isFirstRun}`);
+    const isFirstRun = RUN_SLOT === 1;
+    console.log(`RUN_SLOT=${RUN_SLOT} -> isFirstRun=${isFirstRun}`);
 
     const lines = getTubeLines();
     let slackUsers = {};
@@ -172,7 +193,7 @@ async function main() {
       }
     }
 
-    // Save current disruptions to file
+    // Save current disruptions snapshot for visibility
     fs.writeFileSync(CURRENT_DISRUPTIONS_FILE, JSON.stringify(currentAffectedLines, null, 2));
     console.log(`Current disruptions saved to ${CURRENT_DISRUPTIONS_FILE}`);
 
@@ -180,7 +201,7 @@ async function main() {
     let messageTitle = '';
     let attachments = [];
 
-    if (runInfo.isFirstRun) {
+    if (isFirstRun) {
       // First run of morning/evening - send full update
       shouldSendMessage = true;
       messageTitle = currentAffectedLines.length > 0 ? "*TfL Tube Disruptions:*" : "*TfL Tube Status Update:*";
@@ -221,13 +242,13 @@ async function main() {
       }
     } else {
       // Subsequent runs - only show changes
-      if (!fs.existsSync(PREVIOUS_DISRUPTIONS_FILE)) {
+      const previousState = loadPreviousState();
+      if (previousState.disruptions.length === 0) {
         console.log("No previous disruptions file found. Treating as first run.");
         shouldSendMessage = true;
         messageTitle = "*TfL Tube Disruptions:*";
       } else {
-        const previousDisruptions = JSON.parse(fs.readFileSync(PREVIOUS_DISRUPTIONS_FILE));
-        const changes = findDisruptionChanges(currentAffectedLines, previousDisruptions);
+        const changes = findDisruptionChanges(currentAffectedLines, previousState.disruptions);
         
         const hasChanges = changes.newLines.length > 0 || changes.resolvedLines.length > 0 || changes.updatedLines.length > 0;
         
@@ -328,9 +349,9 @@ async function main() {
       console.log('TfL disruption update sent to Slack.');
     }
 
-    // Save current disruptions as previous for next comparison
-    fs.writeFileSync(PREVIOUS_DISRUPTIONS_FILE, JSON.stringify(currentAffectedLines, null, 2));
-    console.log(`Previous disruptions saved to ${PREVIOUS_DISRUPTIONS_FILE} for future comparison`);
+    // Save state for next comparison
+    saveCurrentState(currentAffectedLines);
+    console.log(`State saved to ${PREVIOUS_DISRUPTIONS_FILE} for future comparison`);
 
   } catch (err) {
     console.error('Error fetching or posting TfL status:', err);

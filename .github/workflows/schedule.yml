@@ -3,12 +3,12 @@ name: Check TFL Line Status
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 6 * * 1-5'  # Runs at 07:30 AM (Monday to Friday)
-    - cron: '00 7 * * 1-5'  # Runs at 08:00 AM (Monday to Friday)
-    - cron: '00 8 * * 1-5'  # Runs at 09:00 AM (Monday to Friday)
-    - cron: '30 15 * * 1-5' # Runs at 04:30 PM (Monday to Friday)
-    - cron: '00 16 * * 1-5' # Runs at 05:00 PM (Monday to Friday)
-    - cron: '30 16 * * 1-5' # Runs at 05:30 PM (Monday to Friday)
+    - cron: '15 6 * * 1-5'  # 06:15 UTC (Morning 1st)
+    - cron: '00 7 * * 1-5'  # 07:00 UTC (Morning 2nd)
+    - cron: '45 7 * * 1-5'  # 07:45 UTC (Morning 3rd)
+    - cron: '30 15 * * 1-5' # 15:30 UTC (Evening 1st)
+    - cron: '15 16 * * 1-5' # 16:15 UTC (Evening 2nd)
+    - cron: '00 17 * * 1-5' # 17:00 UTC (Evening 3rd)
 
 jobs:
   check-status:
@@ -22,14 +22,41 @@ jobs:
         with:
           node-version: 22.14.0
 
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y gh jq
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+
+      - name: Determine cache date and run slot
+        id: slot
+        run: |
+          CACHE_DATE=$(date -u +%Y%m%d)
+          echo "CACHE_DATE=$CACHE_DATE" >> $GITHUB_ENV
+          PREFIX="${{ runner.os }}-previous-disruptions-${CACHE_DATE}-"
+          # Count existing caches for today to derive the run slot (1..3 for morning, reset after deletion)
+          COUNT=$(gh cache list --key "$PREFIX" --json id --jq '.[].id' | wc -l | tr -d ' ')
+          if [ -z "$COUNT" ]; then COUNT=0; fi
+          RUN_SLOT=$((COUNT + 1))
+          echo "RUN_SLOT=$RUN_SLOT" >> $GITHUB_ENV
+          echo "slot=$RUN_SLOT" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_REPO: ${{ github.repository }}
+
       - name: Cache previous disruptions
         uses: actions/cache@v3
         id: cache
         with:
           path: previous_disruptions.json
-          key: ${{ runner.os }}-previous-disruptions
+          key: ${{ runner.os }}-previous-disruptions-${{ env.CACHE_DATE }}-${{ env.RUN_SLOT }}
           restore-keys: |
-            ${{ runner.os }}-previous-disruptions-
+            ${{ runner.os }}-previous-disruptions-${{ env.CACHE_DATE }}-
 
       - name: Create empty previous disruptions file if not cached
         if: steps.cache.outputs.cache-hit != 'true'
@@ -43,45 +70,22 @@ jobs:
         env:
           SLACK_BOT_TFL_TOKEN: ${{ secrets.SLACK_BOT_TFL_TOKEN }}
           SLACK_CHANNEL_TFL: ${{ secrets.SLACK_CHANNEL_TFL }}
-
-      - name: Check if we should delete cache
-        id: check-time
-        run: |
-          # Get current hour and minute in UTC
-          HOUR=$(date -u +%H)
-          MINUTE=$(date -u +%M)
-          # Check if it's the 3rd run (8:00) or 6th run (16:30)
-          # 3rd run: 8:00 UTC (allowing for some delay)
-          # 6th run: 16:30 UTC (allowing for some delay)
-          if [ "$HOUR" = "08" ] || ([ "$HOUR" = "16" ] && [ "$MINUTE" -ge "30" ]); then
-            echo "should_delete=true" >> $GITHUB_OUTPUT
-          else
-            echo "should_delete=false" >> $GITHUB_OUTPUT
-          fi
+          RUN_SLOT: ${{ env.RUN_SLOT }}
 
       - name: Save previous disruptions to cache
         uses: actions/cache/save@v3
-        if: always() && steps.check-time.outputs.should_delete != 'true'
+        if: always()
         with:
           path: previous_disruptions.json
-          key: ${{ runner.os }}-previous-disruptions
+          key: ${{ runner.os }}-previous-disruptions-${{ env.CACHE_DATE }}-${{ env.RUN_SLOT }}
           upload-chunk-size: 32MB
 
       - name: Delete cache for specific runs
-        if: always() && steps.check-time.outputs.should_delete == 'true'
+        if: always() && env.RUN_SLOT == '3'
         run: |
-          echo "Installing GitHub CLI..."
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-          sudo apt update
-          sudo apt install gh
-
-          echo "Fetching cache key..."
-          CACHE_KEY="${{ runner.os }}-previous-disruptions"
-          echo "Deleting cache for key: $CACHE_KEY"
-          
-          # List and delete all caches matching our key
-          gh cache list --key "$CACHE_KEY" --json id --jq '.[].id' | while read -r cache_id; do
+          echo "Deleting all caches for today..."
+          CACHE_PREFIX="${{ runner.os }}-previous-disruptions-${{ env.CACHE_DATE }}-"
+          gh cache list --key "$CACHE_PREFIX" --json id --jq '.[].id' | while read -r cache_id; do
             echo "Deleting cache ID: $cache_id"
             gh cache delete "$cache_id"
           done
