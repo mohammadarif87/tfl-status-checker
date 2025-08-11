@@ -193,6 +193,11 @@ async function main() {
       }
     }
 
+    // Debug: Log the raw API data collected
+    console.log('=== RAW API DATA COLLECTED ===');
+    console.log(JSON.stringify(currentAffectedLines, null, 2));
+    console.log('=== END RAW API DATA ===');
+
     // Save current disruptions snapshot for visibility
     fs.writeFileSync(CURRENT_DISRUPTIONS_FILE, JSON.stringify(currentAffectedLines, null, 2));
     console.log(`Current disruptions saved to ${CURRENT_DISRUPTIONS_FILE}`);
@@ -249,6 +254,14 @@ async function main() {
         messageTitle = "*TfL Tube Disruptions:*";
       } else {
         const changes = findDisruptionChanges(currentAffectedLines, previousState.disruptions);
+        
+        // Debug: Log the change detection results
+        console.log('=== CHANGE DETECTION RESULTS ===');
+        console.log('New lines:', changes.newLines.map(l => l.name));
+        console.log('Updated lines:', changes.updatedLines.map(l => l.name));
+        console.log('Resolved lines:', changes.resolvedLines.map(l => l.name));
+        console.log('Unchanged lines:', changes.unchangedLines.map(l => l.name));
+        console.log('=== END CHANGE DETECTION ===');
         
         const hasChanges = changes.newLines.length > 0 || changes.resolvedLines.length > 0 || changes.updatedLines.length > 0;
         
@@ -340,6 +353,12 @@ async function main() {
     }
 
     if (shouldSendMessage && (attachments.length > 0 || currentAffectedLines.length === 0)) {
+      // Debug: Log the final message that will be sent
+      console.log('=== FINAL SLACK MESSAGE ===');
+      console.log('Title:', messageTitle);
+      console.log('Attachments:', JSON.stringify(attachments, null, 2));
+      console.log('=== END FINAL SLACK MESSAGE ===');
+      
       await slackClient.chat.postMessage({
         channel: SLACK_CHANNEL_TFL,
         text: messageTitle,
