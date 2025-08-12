@@ -38,13 +38,24 @@ jobs:
         run: |
           CACHE_DATE=$(date -u +%Y%m%d)
           echo "CACHE_DATE=$CACHE_DATE" >> $GITHUB_ENV
-          PREFIX="${{ runner.os }}-previous-disruptions-${CACHE_DATE}-"
-          # Count existing caches for today to derive the run slot (1..3 for morning, reset after deletion)
+          
+          # Determine if this is morning or evening block based on current time
+          HOUR=$(date -u +%H)
+          if [ "$HOUR" -lt 12 ]; then
+            BLOCK="morning"
+          else
+            BLOCK="evening"
+          fi
+          echo "BLOCK=$BLOCK" >> $GITHUB_ENV
+          
+          PREFIX="${{ runner.os }}-previous-disruptions-${CACHE_DATE}-${BLOCK}-"
+          # Count existing caches for this block to derive the run slot (1..3)
           COUNT=$(gh cache list --key "$PREFIX" --json id --jq '.[].id' | wc -l | tr -d ' ')
           if [ -z "$COUNT" ]; then COUNT=0; fi
           RUN_SLOT=$((COUNT + 1))
           echo "RUN_SLOT=$RUN_SLOT" >> $GITHUB_ENV
           echo "slot=$RUN_SLOT" >> $GITHUB_OUTPUT
+          echo "block=$BLOCK" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
           GH_REPO: ${{ github.repository }}
@@ -54,9 +65,9 @@ jobs:
         id: cache
         with:
           path: previous_disruptions.json
-          key: ${{ runner.os }}-previous-disruptions-${{ env.CACHE_DATE }}-${{ env.RUN_SLOT }}
+          key: ${{ runner.os }}-previous-disruptions-${{ env.CACHE_DATE }}-${{ env.BLOCK }}-${{ env.RUN_SLOT }}
           restore-keys: |
-            ${{ runner.os }}-previous-disruptions-${{ env.CACHE_DATE }}-
+            ${{ runner.os }}-previous-disruptions-${{ env.CACHE_DATE }}-${{ env.BLOCK }}-
 
       - name: Create empty previous disruptions file if not cached
         if: steps.cache.outputs.cache-hit != 'true'
@@ -66,25 +77,28 @@ jobs:
         run: npm install
 
       - name: Run script
-        run: node checkTflApi.js
+        run: |
+          echo "Debug: CACHE_DATE=$CACHE_DATE, BLOCK=$BLOCK, RUN_SLOT=$RUN_SLOT"
+          node checkTflApi.js
         env:
           SLACK_BOT_TFL_TOKEN: ${{ secrets.SLACK_BOT_TFL_TOKEN }}
           SLACK_CHANNEL_TFL: ${{ secrets.SLACK_CHANNEL_TFL }}
           RUN_SLOT: ${{ env.RUN_SLOT }}
+          BLOCK: ${{ env.BLOCK }}
 
       - name: Save previous disruptions to cache
         uses: actions/cache/save@v3
         if: always()
         with:
           path: previous_disruptions.json
-          key: ${{ runner.os }}-previous-disruptions-${{ env.CACHE_DATE }}-${{ env.RUN_SLOT }}
+          key: ${{ runner.os }}-previous-disruptions-${{ env.CACHE_DATE }}-${{ env.BLOCK }}-${{ env.RUN_SLOT }}
           upload-chunk-size: 32MB
 
       - name: Delete cache for specific runs
         if: always() && env.RUN_SLOT == '3'
         run: |
-          echo "Deleting all caches for today..."
-          CACHE_PREFIX="${{ runner.os }}-previous-disruptions-${{ env.CACHE_DATE }}-"
+          echo "Deleting all caches for ${{ env.BLOCK }} block..."
+          CACHE_PREFIX="${{ runner.os }}-previous-disruptions-${{ env.CACHE_DATE }}-${{ env.BLOCK }}-"
           gh cache list --key "$CACHE_PREFIX" --json id --jq '.[].id' | while read -r cache_id; do
             echo "Deleting cache ID: $cache_id"
             gh cache delete "$cache_id"

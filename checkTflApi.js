@@ -12,6 +12,7 @@ const PREVIOUS_DISRUPTIONS_FILE = "previous_disruptions.json";
 const SLACK_USERS_FILE = "slackUsers.json";
 // From workflow; 1 means first run of the block (morning or evening)
 const RUN_SLOT = Number(process.env.RUN_SLOT || '1');
+const BLOCK = process.env.BLOCK || 'unknown';
 
 const slackClient = new WebClient(SLACK_BOT_TFL_TOKEN);
 
@@ -75,6 +76,10 @@ function normalizeDetailsText(text) {
 }
 
 function getCurrentBlock() {
+  // Use the BLOCK from environment if available, otherwise calculate
+  if (BLOCK && BLOCK !== 'unknown') {
+    return BLOCK;
+  }
   const hour = new Date().getUTCHours();
   return hour < 12 ? 'morning' : 'evening';
 }
@@ -172,7 +177,7 @@ async function main() {
       return;
     }
     const isFirstRun = RUN_SLOT === 1;
-    console.log(`RUN_SLOT=${RUN_SLOT} -> isFirstRun=${isFirstRun}`);
+    console.log(`RUN_SLOT=${RUN_SLOT}, BLOCK=${BLOCK} -> isFirstRun=${isFirstRun}`);
 
     const lines = getTubeLines();
     let slackUsers = {};
