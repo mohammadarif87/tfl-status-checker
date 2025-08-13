@@ -69,9 +69,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-previous-disruptions-${{ env.CACHE_DATE }}-${{ env.BLOCK }}-
 
+      - name: Debug cache status
+        run: |
+          echo "Cache hit status: ${{ steps.cache.outputs.cache-hit }}"
+          echo "Cache key: ${{ steps.cache.outputs.cache-primary-key }}"
+          
       - name: Create empty previous disruptions file if not cached
         if: steps.cache.outputs.cache-hit != 'true'
-        run: echo '[]' > previous_disruptions.json
+        run: |
+          echo "Cache miss - creating empty previous disruptions file"
+          echo '[]' > previous_disruptions.json
 
       - name: Install dependencies
         run: npm install
