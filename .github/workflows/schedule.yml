@@ -73,6 +73,12 @@ jobs:
         run: |
           echo "Cache hit status: ${{ steps.cache.outputs.cache-hit }}"
           echo "Cache key: ${{ steps.cache.outputs.cache-primary-key }}"
+          echo "Checking if previous_disruptions.json exists:"
+          ls -la previous_disruptions.json || echo "File does not exist"
+          if [ -f previous_disruptions.json ]; then
+            echo "File contents:"
+            cat previous_disruptions.json
+          fi
           
       - name: Create empty previous disruptions file if not cached
         if: steps.cache.outputs.cache-hit != 'true'
