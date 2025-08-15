@@ -81,10 +81,13 @@ jobs:
           fi
           
       - name: Create empty previous disruptions file if not cached
-        if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          echo "Cache miss - creating empty previous disruptions file"
-          echo '[]' > previous_disruptions.json
+          if [ ! -f previous_disruptions.json ]; then
+            echo "Cache miss - creating empty previous disruptions file"
+            echo '[]' > previous_disruptions.json
+          else
+            echo "Cache hit - previous_disruptions.json already exists"
+          fi
 
       - name: Install dependencies
         run: npm install

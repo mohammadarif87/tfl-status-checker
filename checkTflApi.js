@@ -85,32 +85,20 @@ function getCurrentBlock() {
 }
 
 function loadPreviousState() {
-  console.log(`Checking for previous disruptions file: ${PREVIOUS_DISRUPTIONS_FILE}`);
-  console.log(`File exists: ${fs.existsSync(PREVIOUS_DISRUPTIONS_FILE)}`);
-  
   if (!fs.existsSync(PREVIOUS_DISRUPTIONS_FILE)) {
-    console.log("Previous disruptions file does not exist");
     return { disruptions: [], metadata: null };
   }
-  
   try {
     const raw = fs.readFileSync(PREVIOUS_DISRUPTIONS_FILE, 'utf8');
-    console.log(`Raw file contents: ${raw}`);
     const parsed = JSON.parse(raw);
-    console.log(`Parsed content:`, parsed);
-    
     if (Array.isArray(parsed)) {
-      console.log(`Returning array with ${parsed.length} items`);
       return { disruptions: parsed, metadata: null };
     }
     if (parsed && Array.isArray(parsed.disruptions)) {
-      console.log(`Returning disruptions array with ${parsed.disruptions.length} items`);
       return { disruptions: parsed.disruptions, metadata: parsed.metadata || null };
     }
-    console.log("No valid disruptions found in file");
     return { disruptions: [], metadata: null };
-  } catch (e) {
-    console.log(`Error parsing previous disruptions file: ${e.message}`);
+  } catch (_e) {
     return { disruptions: [], metadata: null };
   }
 }
@@ -265,7 +253,6 @@ async function main() {
     } else {
       // Subsequent runs - only show changes
       const previousState = loadPreviousState();
-      console.log(`Previous state loaded: ${previousState.disruptions.length} disruptions`);
       
       if (previousState.disruptions.length === 0) {
         console.log("No previous disruptions found. Treating as first run.");
@@ -276,8 +263,6 @@ async function main() {
         
         // Debug: Log the change detection results
         console.log('=== CHANGE DETECTION RESULTS ===');
-        console.log('Current disruptions:', currentAffectedLines.map(l => `${l.name}: ${l.details}`));
-        console.log('Previous disruptions:', previousState.disruptions.map(l => `${l.name}: ${l.details}`));
         console.log('New lines:', changes.newLines.map(l => l.name));
         console.log('Updated lines:', changes.updatedLines.map(l => l.name));
         console.log('Resolved lines:', changes.resolvedLines.map(l => l.name));
