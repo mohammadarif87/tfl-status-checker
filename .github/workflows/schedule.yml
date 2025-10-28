@@ -3,12 +3,12 @@ name: Check TFL Line Status
 on:
   workflow_dispatch:
   schedule:
-    - cron: '15 6 * * 1-5'  # 06:15 UTC (Morning 1st)
-    - cron: '00 7 * * 1-5'  # 07:00 UTC (Morning 2nd)
-    - cron: '45 7 * * 1-5'  # 07:45 UTC (Morning 3rd)
-    - cron: '30 15 * * 1-5' # 15:30 UTC (Evening 1st)
-    - cron: '15 16 * * 1-5' # 16:15 UTC (Evening 2nd)
-    - cron: '00 17 * * 1-5' # 17:00 UTC (Evening 3rd)
+    - cron: '15 7 * * 1-5'  # 07:15 UTC (Morning 1st)
+    - cron: '00 8 * * 1-5'  # 08:00 UTC (Morning 2nd)
+    - cron: '45 8 * * 1-5'  # 08:45 UTC (Morning 3rd)
+    - cron: '30 16 * * 1-5' # 16:30 UTC (Evening 1st)
+    - cron: '15 17 * * 1-5' # 17:15 UTC (Evening 2nd)
+    - cron: '00 18 * * 1-5' # 18:00 UTC (Evening 3rd)
 
 jobs:
   check-status:
