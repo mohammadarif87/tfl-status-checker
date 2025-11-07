@@ -48,7 +48,6 @@
     },
     "piccadilly": {
       "name": "Piccadilly Line",
-      "users": ["U04PY8GL4VD"],
       "description": "Piccadilly Line - Cockfosters to Heathrow/Uxbridge"
     },
     "tram": {
@@ -57,7 +56,7 @@
     },
     "victoria": {
       "name": "Victoria Line",
-      "users": ["U04PY8GL4VD", "U055S61879P"],
+      "users": ["U055S61879P"],
       "description": "Victoria Line - Walthamstow Central to Brixton"
     },
     "waterloo-city": {
