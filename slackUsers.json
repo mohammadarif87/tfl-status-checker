@@ -38,12 +38,12 @@
     },
     "metropolitan": {
       "name": "Metropolitan Line",
-      "users": ["U05C37PA0B0"],
+      "users": ["U05C37PA0B0", "U044MPN39DL"],
       "description": "Metropolitan Line - Amersham/Chesham/Watford to Aldgate"
     },
     "northern": {
       "name": "Northern Line",
-      "users": ["U044MPN39DL", "U084LK27MJ9", "U055S61879P", "U078L4XBX1T", "U03EL5FG90S", "U05C37PA0B0", "U3AFYS6JF", "U08LU9C8S94", "U090HF99HGV", "U011A22FAJH"],
+      "users": ["U084LK27MJ9", "U055S61879P", "U078L4XBX1T", "U03EL5FG90S", "U05C37PA0B0", "U3AFYS6JF", "U08LU9C8S94", "U090HF99HGV", "U011A22FAJH"],
       "description": "Northern Line - Edgware/High Barnet to Morden"
     },
     "piccadilly": {
