@@ -61,7 +61,7 @@
     },
     "waterloo-city": {
       "name": "Waterloo & City Line",
-      "users": ["U084LK27MJ9"],
+      "users": ["U084LK27MJ9", "U055S61879P"],
       "description": "Waterloo & City Line - Waterloo to Bank"
     },
     "liberty": {
