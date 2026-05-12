@@ -84,6 +84,31 @@ function getCurrentBlock() {
   return hour < 12 ? 'morning' : 'evening';
 }
 
+function buildSlackRunFooter() {
+  const when = new Date();
+  const london = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  }).format(when);
+  const utc = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  }).format(when);
+  const slot =
+    BLOCK !== 'unknown' && Number.isFinite(RUN_SLOT) && RUN_SLOT >= 1
+      ? ` · ${BLOCK} ${RUN_SLOT}/3`
+      : '';
+  return `\n_${london}${slot} · ${utc}_`;
+}
+
 function loadPreviousState() {
   if (!fs.existsSync(PREVIOUS_DISRUPTIONS_FILE)) {
     return { disruptions: [], metadata: null };
@@ -210,6 +235,7 @@ async function main() {
     let shouldSendMessage = false;
     let messageTitle = '';
     let attachments = [];
+    const runFooter = buildSlackRunFooter();
 
     if (isFirstRun) {
       // First run of morning/evening - send full update
@@ -219,7 +245,7 @@ async function main() {
       if (currentAffectedLines.length === 0) {
         await slackClient.chat.postMessage({
           channel: SLACK_CHANNEL_TFL,
-          text: `${messageTitle}\n\n✅ All lines are running with good service.`,
+          text: `${messageTitle}\n\n✅ All lines are running with good service.${runFooter}`,
           mrkdwn: true
         });
         console.log('No disruptions message sent to Slack on first run.');
@@ -367,7 +393,7 @@ async function main() {
       
       await slackClient.chat.postMessage({
         channel: SLACK_CHANNEL_TFL,
-        text: messageTitle,
+        text: `${messageTitle}${runFooter}`,
         attachments: attachments,
         mrkdwn: true
       });
