@@ -3,26 +3,32 @@ name: Check TFL Line Status
 on:
   workflow_dispatch:
   schedule:
-    # GitHub Actions cron is always UTC. During BST (UTC+1), these map to London:
-    # 07:15, 08:00, 08:45 and 16:30, 17:15, 18:00. In GMT (winter), subtract one hour from London wall clock.
-    - cron: '15 6 * * 1-5'
-    - cron: '00 7 * * 1-5'
-    - cron: '45 7 * * 1-5'
-    - cron: '30 15 * * 1-5'
-    - cron: '15 16 * * 1-5'
-    - cron: '00 17 * * 1-5'
+    # Cron times are interpreted in Europe/London (DST-aware). Six runs Mon–Fri.
+    - cron: '15 7 * * 1-5'
+      timezone: Europe/London
+    - cron: '0 8 * * 1-5'
+      timezone: Europe/London
+    - cron: '45 8 * * 1-5'
+      timezone: Europe/London
+    - cron: '30 16 * * 1-5'
+      timezone: Europe/London
+    - cron: '15 17 * * 1-5'
+      timezone: Europe/London
+    - cron: '0 18 * * 1-5'
+      timezone: Europe/London
 
 jobs:
   check-status:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v5
         with:
           node-version: 22.14.0
+          package-manager-cache: false
 
       - name: Install GitHub CLI
         run: |
@@ -41,8 +47,24 @@ jobs:
           CACHE_DATE=$(date -u +%Y%m%d)
           echo "CACHE_DATE=$CACHE_DATE" >> $GITHUB_ENV
 
-          # Morning/evening block from UTC hour (matches cron buckets)
-          HOUR=$(date -u +%H)
+          # Which cron fired (github.event.schedule). Times are Europe/London when using timezone: above.
+          case '${{ github.event.schedule }}' in
+            '15 7 * * 1-5')  echo "SCHEDULE_NOTE=07:15 Europe/London" >> $GITHUB_ENV ;;
+            '0 8 * * 1-5')   echo "SCHEDULE_NOTE=08:00 Europe/London" >> $GITHUB_ENV ;;
+            '00 8 * * 1-5')  echo "SCHEDULE_NOTE=08:00 Europe/London" >> $GITHUB_ENV ;;
+            '45 8 * * 1-5')  echo "SCHEDULE_NOTE=08:45 Europe/London" >> $GITHUB_ENV ;;
+            '30 16 * * 1-5') echo "SCHEDULE_NOTE=16:30 Europe/London" >> $GITHUB_ENV ;;
+            '15 17 * * 1-5') echo "SCHEDULE_NOTE=17:15 Europe/London" >> $GITHUB_ENV ;;
+            '0 18 * * 1-5')  echo "SCHEDULE_NOTE=18:00 Europe/London" >> $GITHUB_ENV ;;
+            '00 18 * * 1-5') echo "SCHEDULE_NOTE=18:00 Europe/London" >> $GITHUB_ENV ;;
+            *)
+              S='${{ github.event.schedule }}'
+              if [ -n "$S" ]; then echo "SCHEDULE_NOTE=Cron $S (see workflow timezone)" >> $GITHUB_ENV; else echo "SCHEDULE_NOTE=" >> $GITHUB_ENV; fi
+              ;;
+          esac
+
+          # Morning/evening from London hour (matches local cron buckets)
+          HOUR=$(TZ=Europe/London date +%H)
           if [ "$HOUR" -lt 12 ]; then
             BLOCK="morning"
           else
@@ -62,7 +84,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
 
       - name: Cache previous disruptions
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         id: cache
         with:
           path: previous_disruptions.json
@@ -96,15 +118,17 @@ jobs:
       - name: Run script
         run: |
           echo "Debug: CACHE_DATE=$CACHE_DATE, BLOCK=$BLOCK, RUN_SLOT=$RUN_SLOT"
+          echo "Debug: github.event.schedule=${{ github.event.schedule }} SCHEDULE_NOTE=$SCHEDULE_NOTE"
           node checkTflApi.js
         env:
           SLACK_BOT_TFL_TOKEN: ${{ secrets.SLACK_BOT_TFL_TOKEN }}
           SLACK_CHANNEL_TFL: ${{ secrets.SLACK_CHANNEL_TFL }}
           RUN_SLOT: ${{ env.RUN_SLOT }}
           BLOCK: ${{ env.BLOCK }}
+          SCHEDULE_NOTE: ${{ env.SCHEDULE_NOTE }}
 
       - name: Save previous disruptions to cache
-        uses: actions/cache/save@v3
+        uses: actions/cache/save@v5
         if: always()
         with:
           path: previous_disruptions.json

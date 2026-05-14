@@ -13,6 +13,7 @@ const SLACK_USERS_FILE = "slackUsers.json";
 // From workflow; 1 means first run of the block (morning or evening)
 const RUN_SLOT = Number(process.env.RUN_SLOT || '1');
 const BLOCK = process.env.BLOCK || 'unknown';
+const SCHEDULE_NOTE = (process.env.SCHEDULE_NOTE || '').trim();
 
 const slackClient = new WebClient(SLACK_BOT_TFL_TOKEN);
 
@@ -98,6 +99,10 @@ function buildSlackRunFooter() {
   }).format(when);
   const utc = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'UTC',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
     timeZoneName: 'short',
@@ -106,7 +111,12 @@ function buildSlackRunFooter() {
     BLOCK !== 'unknown' && Number.isFinite(RUN_SLOT) && RUN_SLOT >= 1
       ? ` · ${BLOCK} ${RUN_SLOT}/3`
       : '';
-  return `\n_${london}${slot} · ${utc}_`;
+  // Footer "Sent" time is when the message is posted (after queue + npm + API calls).
+  // SCHEDULE_NOTE (from github.event.schedule) is GitHub's intended cron slot.
+  const scheduled = SCHEDULE_NOTE
+    ? `Scheduled: ${SCHEDULE_NOTE} · `
+    : '';
+  return `\n_${scheduled}Sent: ${london}${slot} · ${utc}_`;
 }
 
 function loadPreviousState() {
@@ -195,6 +205,30 @@ function findDisruptionChanges(currentDisruptions, previousDisruptions) {
   return changes;
 }
 
+function addFullDisruptionAttachments(attachments, affectedLines, slackUsers) {
+  for (const line of affectedLines) {
+    const emoji = LINE_EMOJIS[line.id] || '';
+    const color = LINE_COLORS[line.id] || '#CCCCCC';
+    let userMentions = '';
+    if (slackUsers.lines && slackUsers.lines[line.id] &&
+        slackUsers.lines[line.id].users && slackUsers.lines[line.id].users.length > 0) {
+      userMentions = slackUsers.lines[line.id].users
+        .filter(userId => userId && userId.trim() !== '')
+        .map(userId => `<@${userId}>`)
+        .join(' ');
+    }
+    let textContent = `${emoji} *${line.name}*\n${line.details}`;
+    if (userMentions) {
+      textContent += `\n${userMentions}`;
+    }
+    attachments.push({
+      color,
+      text: textContent,
+      mrkdwn_in: ['text'],
+    });
+  }
+}
+
 async function main() {
   try {
     if (!SLACK_BOT_TFL_TOKEN || !SLACK_CHANNEL_TFL) {
@@ -238,52 +272,26 @@ async function main() {
     const runFooter = buildSlackRunFooter();
 
     if (isFirstRun) {
-      // First run of morning/evening - send full update
+      // First run of morning/evening - send full update (single postMessage below)
       shouldSendMessage = true;
       messageTitle = currentAffectedLines.length > 0 ? "*TfL Tube Disruptions:*" : "*TfL Tube Status Update:*";
-      
-      if (currentAffectedLines.length === 0) {
-        await slackClient.chat.postMessage({
-          channel: SLACK_CHANNEL_TFL,
-          text: `${messageTitle}\n\n✅ All lines are running with good service.${runFooter}`,
-          mrkdwn: true
-        });
-        console.log('No disruptions message sent to Slack on first run.');
-      } else {
-        // Create attachments for all current disruptions with user mentions
-        for (const line of currentAffectedLines) {
-          const emoji = LINE_EMOJIS[line.id] || '';
-          const color = LINE_COLORS[line.id] || '#CCCCCC';
-          
-          let userMentions = "";
-          if (slackUsers.lines && slackUsers.lines[line.id] && 
-              slackUsers.lines[line.id].users && slackUsers.lines[line.id].users.length > 0) {
-            userMentions = slackUsers.lines[line.id].users
-              .filter(userId => userId && userId.trim() !== "")
-              .map(userId => `<@${userId}>`)
-              .join(" ");
-          }
-
-          let textContent = `${emoji} *${line.name}*\n${line.details}`;
-          if (userMentions) {
-            textContent += `\n${userMentions}`;
-          }
-
-          attachments.push({
-            color: color,
-            text: textContent,
-            mrkdwn_in: ['text'],
-          });
-        }
+      if (currentAffectedLines.length > 0) {
+        addFullDisruptionAttachments(attachments, currentAffectedLines, slackUsers);
       }
     } else {
       // Subsequent runs - only show changes
       const previousState = loadPreviousState();
       
       if (previousState.disruptions.length === 0) {
-        console.log("No previous disruptions found. Treating as first run.");
+        // Slots 2/3 (or cache miss): no snapshot to diff — send same shape as slot 1
+        console.log('No previous disruptions found. Treating as first run for Slack content.');
         shouldSendMessage = true;
-        messageTitle = "*TfL Tube Disruptions:*";
+        if (currentAffectedLines.length === 0) {
+          messageTitle = "*TfL Tube Status Update:*";
+        } else {
+          messageTitle = "*TfL Tube Disruptions:*";
+          addFullDisruptionAttachments(attachments, currentAffectedLines, slackUsers);
+        }
       } else {
         const changes = findDisruptionChanges(currentAffectedLines, previousState.disruptions);
         
@@ -390,10 +398,15 @@ async function main() {
       console.log('Title:', messageTitle);
       console.log('Attachments:', JSON.stringify(attachments, null, 2));
       console.log('=== END FINAL SLACK MESSAGE ===');
-      
+
+      const slackText =
+        attachments.length === 0 && currentAffectedLines.length === 0
+          ? `${messageTitle}\n\n✅ All lines are running with good service.${runFooter}`
+          : `${messageTitle}${runFooter}`;
+
       await slackClient.chat.postMessage({
         channel: SLACK_CHANNEL_TFL,
-        text: `${messageTitle}${runFooter}`,
+        text: slackText,
         attachments: attachments,
         mrkdwn: true
       });
