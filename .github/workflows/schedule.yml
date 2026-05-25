@@ -7,15 +7,6 @@ on:
         description: 'Scheduled time note (e.g. 07:15 Europe/London)'
         required: false
         default: ''
-  schedule:
-    # GitHub Actions cron schedules are strictly UTC and do not support timezone-aware run configurations.
-    # The following UTC times correspond to local BST (UTC+1) target times (07:15, 08:00, 08:45, 16:30, 17:15, 18:00).
-    - cron: '15 6 * * 1-5'
-    - cron: '0 7 * * 1-5'
-    - cron: '45 7 * * 1-5'
-    - cron: '30 15 * * 1-5'
-    - cron: '15 16 * * 1-5'
-    - cron: '0 17 * * 1-5'
 
 jobs:
   check-status:
