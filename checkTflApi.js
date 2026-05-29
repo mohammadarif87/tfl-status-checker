@@ -114,7 +114,7 @@ function buildSlackRunFooter() {
   // Footer "Sent" time is when the message is posted (after queue + npm + API calls).
   // SCHEDULE_NOTE (from github.event.schedule) is GitHub's intended cron slot.
   const scheduled = SCHEDULE_NOTE
-    ? `_${SCHEDULE_NOTE}_ · `
+    ? `${SCHEDULE_NOTE} · `
     : '';
   return `\n_${scheduled}Sent: ${london}${slot} · ${utc}_`;
 }
