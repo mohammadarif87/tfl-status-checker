@@ -82,6 +82,7 @@
     },
     "weaver": {
       "name": "London Overground",
+      "users": ["U0ARN22TZ4H"],
       "description": "London Overground - Various routes across London"
     },
     "windrush": {
